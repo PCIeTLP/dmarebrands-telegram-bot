@@ -1,0 +1,25 @@
+{
+  "name": "dmarebrands-telegram-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for the dmarebrands Partner API",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "register": "node scripts/register.js",
+    "unregister": "node scripts/register.js --clear",
+    "doctor": "node scripts/doctor.js",
+    "typecheck": "tsc -p jsconfig.json"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "grammy": "^1.45.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "license": "MIT"
+}
