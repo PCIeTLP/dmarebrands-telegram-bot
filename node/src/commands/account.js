@@ -112,7 +112,7 @@ export const domains = {
         "",
         ...rows.map((d) =>
           lines(
-            `${title(d.hostname)} — ${esc(d.kind)}`,
+            `${title(d.hostname)} - ${esc(d.kind)}`,
             d.live ? "Live" : `Not live yet (${esc(d.status)} / ssl ${esc(d.ssl_status)})`,
             d.checked_at ? `Checked ${ago(d.checked_at)}` : "",
             d.last_error ? esc(d.last_error) : "",
@@ -158,9 +158,9 @@ export const help = {
         title("dmarebrands partner bot"),
         "",
         usable.length ? title("You can use") : "",
-        ...usable.map((c) => `/${c.name}${c.args ? ` ${esc(c.args)}` : ""} — ${esc(c.description)}`),
+        ...usable.map((c) => `/${c.name}${c.args ? ` ${esc(c.args)}` : ""} - ${esc(c.description)}`),
         blocked.length ? `\n${title("Not available to you")}` : "",
-        ...blocked.map((c) => `/${c.name} — ${esc(c.description)}`)
+        ...blocked.map((c) => `/${c.name} - ${esc(c.description)}`)
       )
     );
   },
@@ -179,7 +179,7 @@ export const start = {
           title("dmarebrands partner bot"),
           "",
           "You are not on the allowlist yet.",
-          `Your Telegram user ID is ${code(ctx.from.id)} — give that to whoever runs this bot.`
+          `Your Telegram user ID is ${code(ctx.from.id)} - give that to whoever runs this bot.`
         )
       );
       return;

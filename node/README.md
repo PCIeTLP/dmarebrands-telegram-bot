@@ -1,4 +1,4 @@
-# dmarebrands Telegram bot — Node.js
+# dmarebrands Telegram bot for Node.js
 
 [grammY](https://grammy.dev) on Node 20 or newer. See the [main README](../README.md) for the
 command list, the permission model and how Telegram's lack of ephemeral replies is handled.
@@ -65,5 +65,5 @@ Add an object to a module in `src/commands/` with `{ name, description, scope, r
 in `src/commands/index.js`, and run `npm run register`.
 
 Set `scope` to `null` for a command anyone may run. Everything written into a message must go
-through `esc()` from `format.js` — Telegram parses HTML, so an unescaped customer username would
+through `esc()` from `format.js` - Telegram parses HTML, so an unescaped customer username would
 break the message or inject formatting.

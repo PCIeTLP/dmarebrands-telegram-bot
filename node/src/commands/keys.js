@@ -6,7 +6,7 @@ const FILTERS = new Set(["all", "unused", "active", "expired"]);
 function keyLine(key) {
   const owner = key.customer ? ` · ${esc(key.customer.username)}` : "";
   const expiry = key.expires_at ? ` · expires ${until(key.expires_at)}` : "";
-  return `${code(key.code)} — ${stateLabel(key.state)} · ${key.days}d ${esc(key.product)}${owner}${expiry}`;
+  return `${code(key.code)} - ${stateLabel(key.state)} · ${key.days}d ${esc(key.product)}${owner}${expiry}`;
 }
 
 export const keys = {
@@ -33,7 +33,7 @@ export const keys = {
     }
 
     const body = lines(
-      title(`Keys — ${filter === "all" ? "everything" : stateLabel(filter)}`),
+      title(`Keys - ${filter === "all" ? "everything" : stateLabel(filter)}`),
       "",
       ...rows.map(keyLine),
       "",
@@ -182,7 +182,7 @@ export const refund = {
       text: lines(
         title("Confirm this refund"),
         "",
-        `${code(found.code)} — ${found.days}d ${esc(found.product)}`,
+        `${code(found.code)} - ${found.days}d ${esc(found.product)}`,
         `This destroys the key and puts ${money(found.cost_usd)} back on the balance.`,
         "It cannot be undone and the code stops working immediately."
       ),

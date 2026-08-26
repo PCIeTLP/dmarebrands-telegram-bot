@@ -92,7 +92,7 @@ async def domains(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             if domain.get("live")
             else f"Not live yet ({esc(domain.get('status'))} / ssl {esc(domain.get('ssl_status'))})"
         )
-        body.append(f"{title(domain['hostname'])} — {esc(domain['kind'])}")
+        body.append(f"{title(domain['hostname'])} - {esc(domain['kind'])}")
         body.append(state)
         if domain.get("checked_at"):
             body.append(f"Checked {ago(domain['checked_at'])}")
@@ -137,12 +137,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if usable:
         body.append(title("You can use"))
         body.extend(
-            f"/{c.name}{' ' + esc(c.args) if c.args else ''} — {esc(c.description)}" for c in usable
+            f"/{c.name}{' ' + esc(c.args) if c.args else ''} - {esc(c.description)}" for c in usable
         )
     if blocked:
         body.append("")
         body.append(title("Not available to you"))
-        body.extend(f"/{c.name} — {esc(c.description)}" for c in blocked)
+        body.extend(f"/{c.name} - {esc(c.description)}" for c in blocked)
 
     await send(update, lines(*body))
 
@@ -158,7 +158,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 title("dmarebrands partner bot"),
                 "",
                 "You are not on the allowlist yet.",
-                f"Your Telegram user ID is {code(update.effective_user.id)} — "
+                f"Your Telegram user ID is {code(update.effective_user.id)} - "
                 "give that to whoever runs this bot.",
             ),
         )

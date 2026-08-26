@@ -14,7 +14,7 @@ def key_line(key: dict) -> str:
     owner = f" · {esc(customer['username'])}" if customer else ""
     expiry = f" · expires {until(key['expires_at'])}" if key.get("expires_at") else ""
     return (
-        f"{code(key['code'])} — {state_label(key.get('state'))} · "
+        f"{code(key['code'])} - {state_label(key.get('state'))} · "
         f"{key.get('days')}d {esc(key.get('product'))}{owner}{expiry}"
     )
 
@@ -37,7 +37,7 @@ async def keys(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     body = lines(
-        title(f"Keys — {'everything' if chosen == 'all' else state_label(chosen)}"),
+        title(f"Keys - {'everything' if chosen == 'all' else state_label(chosen)}"),
         "",
         *[key_line(key) for key in rows],
         "",
@@ -176,7 +176,7 @@ async def refund(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         lines(
             title("Confirm this refund"),
             "",
-            f"{code(found['code'])} — {found['days']}d {esc(found['product'])}",
+            f"{code(found['code'])} - {found['days']}d {esc(found['product'])}",
             f"This destroys the key and puts {money(found.get('cost_usd'))} back on the balance.",
             "It cannot be undone and the code stops working immediately.",
         ),

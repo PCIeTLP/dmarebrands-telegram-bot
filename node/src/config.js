@@ -13,14 +13,29 @@ export const SCOPES = [
   "customers.read",
   "hwid.reset",
   "domains.read",
+  "status.read",
+  "brand.read",
+  "brand.write",
+  "tickets.read",
+  "tickets.write",
+  "activity.read",
 ];
 
 export const GROUPS = {
   USERS_ADMIN: SCOPES,
-  USERS_KEYS: ["account.read", "keys.read", "keys.buy", "keys.refund", "customers.read"],
-  USERS_HWID: ["hwid.reset", "keys.read", "customers.read"],
+  USERS_KEYS: ["account.read", "keys.read", "keys.buy", "keys.refund", "customers.read", "status.read"],
+  USERS_HWID: ["hwid.reset", "keys.read", "customers.read", "status.read"],
+  USERS_SUPPORT: ["account.read", "status.read", "tickets.read", "tickets.write", "customers.read"],
   USERS_BILLING: ["account.read", "billing.read"],
-  USERS_READ: ["account.read", "keys.read", "customers.read", "domains.read"],
+  USERS_READ: [
+    "account.read",
+    "keys.read",
+    "customers.read",
+    "domains.read",
+    "status.read",
+    "brand.read",
+    "activity.read",
+  ],
 };
 
 class ConfigError extends Error {}
@@ -59,7 +74,7 @@ function buildUserScopes() {
 
   if (!total) {
     throw new ConfigError(
-      "No users configured. Set at least one of USERS_ADMIN, USERS_KEYS, USERS_HWID, USERS_BILLING or USERS_READ.\n" +
+      "No users configured. Set at least one of USERS_ADMIN, USERS_KEYS, USERS_HWID, USERS_BILLING, USERS_SUPPORT or USERS_READ.\n" +
         "Message @userinfobot on Telegram to find your numeric user ID."
     );
   }

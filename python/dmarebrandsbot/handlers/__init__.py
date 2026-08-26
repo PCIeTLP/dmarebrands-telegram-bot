@@ -9,6 +9,9 @@ from telegram.ext import ContextTypes
 from . import account as account_mod
 from . import customers as customers_mod
 from . import keys as keys_mod
+from . import status as status_mod
+from . import brand as brand_mod
+from . import support as support_mod
 
 Handler = Callable[[Update, ContextTypes.DEFAULT_TYPE], Awaitable[None]]
 
@@ -47,7 +50,13 @@ COMMANDS: tuple[Command, ...] = (
         customers_mod.customers,
         "[search]",
     ),
-    Command("customer", "Look up one customer by id", "customers.read", customers_mod.customer, "<id>"),
+    Command(
+        "customer",
+        "Look up one customer by id, username or a key they redeemed",
+        "customers.read",
+        customers_mod.customer,
+        "<id|username|key>",
+    ),
     Command(
         "resetkey",
         "Clear a customer's hardware lock, found by key code",
@@ -57,12 +66,68 @@ COMMANDS: tuple[Command, ...] = (
     ),
     Command(
         "resetuser",
-        "Clear a customer's hardware lock, found by customer id",
+        "Clear a customer's hardware lock, found by id, username or key",
         "hwid.reset",
         customers_mod.resetuser,
-        "<id>",
+        "<id|username|key>",
     ),
     Command("domains", "Your white-label domains and whether they are live", "domains.read", account_mod.domains),
+    Command(
+        "status",
+        "Whether a product is up, and whether customer keys are frozen",
+        "status.read",
+        status_mod.status,
+        "[product]",
+    ),
+    Command(
+        "updates",
+        "The latest Rust build and the recent patch notes",
+        "status.read",
+        status_mod.updates,
+    ),
+    Command(
+        "brand",
+        "Your branding and the links to your public pages",
+        "brand.read",
+        brand_mod.brand,
+    ),
+    Command(
+        "setbrand",
+        "Change your branding, one field at a time",
+        "brand.write",
+        brand_mod.setbrand,
+        "<field> <value>",
+    ),
+    Command("tickets", "List your support threads", "tickets.read", support_mod.tickets, "[status]"),
+    Command("ticket", "Read one support thread", "tickets.read", support_mod.ticket, "<ref>"),
+    Command(
+        "newticket",
+        "Open a support ticket",
+        "tickets.write",
+        support_mod.newticket,
+        "<subject> | <message>",
+    ),
+    Command(
+        "replyticket",
+        "Reply to one of your support threads",
+        "tickets.write",
+        support_mod.replyticket,
+        "<ref> <message>",
+    ),
+    Command(
+        "closeticket",
+        "Close a support thread you no longer need",
+        "tickets.write",
+        support_mod.closeticket,
+        "<ref>",
+    ),
+    Command(
+        "activity",
+        "Recent activity on your partner account",
+        "activity.read",
+        support_mod.activity,
+        "[limit]",
+    ),
     Command("whoami", "Show what this bot will let you do", None, account_mod.whoami),
 )
 

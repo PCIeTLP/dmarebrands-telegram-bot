@@ -23,6 +23,12 @@ SCOPES = (
     "customers.read",
     "hwid.reset",
     "domains.read",
+    "status.read",
+    "brand.read",
+    "brand.write",
+    "tickets.read",
+    "tickets.write",
+    "activity.read",
 )
 
 GROUPS: dict[str, tuple[str, ...]] = {
