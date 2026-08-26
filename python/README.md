@@ -1,4 +1,4 @@
-# dmarebrands Telegram bot — Python
+# dmarebrands Telegram bot for Python
 
 [python-telegram-bot](https://python-telegram-bot.org) v22 on Python 3.10 or newer. See the
 [main README](../README.md) for the command list, the permission model and how Telegram's lack
@@ -79,5 +79,5 @@ Write an async handler in `dmarebrandsbot/handlers/`, then add a `Command(...)` 
 `COMMANDS` tuple in `handlers/__init__.py` and run `python scripts/register.py`.
 
 Set the scope to `None` for a command anyone may run. Everything written into a message must go
-through `esc()` from `formatting.py` — Telegram parses HTML, so an unescaped customer username
+through `esc()` from `formatting.py` - Telegram parses HTML, so an unescaped customer username
 would break the message or inject formatting.

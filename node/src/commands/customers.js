@@ -4,7 +4,7 @@ import { confirm, send, sendPrivate } from "../reply.js";
 function machineLines(customer) {
   if (!customer.machines?.length) return "Nothing bound right now.";
   return customer.machines
-    .map((m) => `${esc(m.scope)} — bound ${ago(m.bound_at)} · last seen ${ago(m.last_seen)}`)
+    .map((m) => `${esc(m.scope)} - bound ${ago(m.bound_at)} · last seen ${ago(m.last_seen)}`)
     .join("\n");
 }
 
@@ -29,7 +29,7 @@ export const customers = {
       ...rows.map((c) => {
         const state = c.active ? `active until ${until(c.expires_at)}` : "expired";
         const bound = c.machines?.length ? ` · ${c.machines.length} machine(s)` : "";
-        return `${title(c.username)} (id ${c.id}) — ${state} · ${c.keys} key(s)${bound}`;
+        return `${title(c.username)} (id ${c.id}) · ${state} · ${c.keys} key(s)${bound}`;
       }),
       "",
       `<i>${rows.length} shown</i>`
@@ -41,17 +41,20 @@ export const customers = {
 
 export const customer = {
   name: "customer",
-  description: "Look up one customer by id",
-  args: "<id>",
+  description: "Look up one customer by id, username or a key they redeemed",
+  args: "<id|username|key>",
   scope: "customers.read",
   async run({ ctx, api, args }) {
-    const id = Number(args[0]);
-    if (!Number.isInteger(id) || id < 1) {
-      await send(ctx, `Usage: <code>/customer 1042</code>`);
+    const ref = (args[0] ?? "").trim();
+    if (!ref) {
+      await send(
+        ctx,
+        "Usage: <code>/customer 1042</code>, <code>/customer theirname</code> or <code>/customer DMA-XXXX-XXXX-XXXX-XXXX</code>"
+      );
       return;
     }
 
-    const found = await api.getCustomer(id);
+    const found = await api.getCustomer(ref);
     await sendPrivate(
       ctx,
       lines(
@@ -124,17 +127,20 @@ export const resetkey = {
 
 export const resetuser = {
   name: "resetuser",
-  description: "Clear a customer's hardware lock, found by customer id",
-  args: "<id>",
+  description: "Clear a customer's hardware lock, found by id, username or key",
+  args: "<id|username|key>",
   scope: "hwid.reset",
   async run({ ctx, api, args, log }) {
-    const id = Number(args[0]);
-    if (!Number.isInteger(id) || id < 1) {
-      await send(ctx, `Usage: <code>/resetuser 1042</code>`);
+    const ref = (args[0] ?? "").trim();
+    if (!ref) {
+      await send(
+        ctx,
+        "Usage: <code>/resetuser 1042</code>, <code>/resetuser theirname</code> or <code>/resetuser DMA-XXXX-XXXX-XXXX-XXXX</code>"
+      );
       return;
     }
 
-    const found = await api.getCustomer(id);
+    const found = await api.getCustomer(ref);
     const answer = await confirm(ctx, {
       text: lines(
         title("Confirm this reset"),
@@ -150,7 +156,7 @@ export const resetuser = {
       return;
     }
 
-    const result = await api.resetByCustomer(id);
+    const result = await api.resetByCustomer(found.id);
     await send(
       ctx,
       lines(

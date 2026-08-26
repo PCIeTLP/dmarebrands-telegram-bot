@@ -19,7 +19,7 @@ def machine_lines(customer: dict) -> str:
     if not machines:
         return "Nothing bound right now."
     return "\n".join(
-        f"{esc(m['scope'])} — bound {ago(m.get('bound_at'))} · last seen {ago(m.get('last_seen'))}"
+        f"{esc(m['scope'])} - bound {ago(m.get('bound_at'))} · last seen {ago(m.get('last_seen'))}"
         for m in machines
     )
 
@@ -39,7 +39,7 @@ async def customers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         machines = customer.get("machines") or []
         bound = f" · {len(machines)} machine(s)" if machines else ""
         body.append(
-            f"{title(customer['username'])} (id {customer['id']}) — {state} · "
+            f"{title(customer['username'])} (id {customer['id']}) · {state} · "
             f"{customer.get('keys', 0)} key(s){bound}"
         )
     body.extend(["", f"<i>{len(rows)} shown</i>"])
@@ -49,18 +49,19 @@ async def customers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+USAGE_CUSTOMER = (
+    "Usage: <code>/customer 1042</code>, <code>/customer theirname</code> or "
+    "<code>/customer DMA-XXXX-XXXX-XXXX-XXXX</code>"
+)
+
+
 async def customer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    args = context.args or []
-    try:
-        customer_id = int(args[0])
-    except (IndexError, ValueError):
-        await send(update, "Usage: <code>/customer 1042</code>")
-        return
-    if customer_id < 1:
-        await send(update, "Usage: <code>/customer 1042</code>")
+    ref = (context.args or [""])[0].strip()
+    if not ref:
+        await send(update, USAGE_CUSTOMER)
         return
 
-    found = await context.application.bot_data["api"].get_customer(customer_id)
+    found = await context.application.bot_data["api"].get_customer(ref)
 
     await send_private(
         update,
@@ -135,17 +136,16 @@ async def resetkey(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def resetuser(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     api = context.application.bot_data["api"]
-    args = context.args or []
-    try:
-        customer_id = int(args[0])
-    except (IndexError, ValueError):
-        await send(update, "Usage: <code>/resetuser 1042</code>")
-        return
-    if customer_id < 1:
-        await send(update, "Usage: <code>/resetuser 1042</code>")
+    ref = (context.args or [""])[0].strip()
+    if not ref:
+        await send(
+            update,
+            "Usage: <code>/resetuser 1042</code>, <code>/resetuser theirname</code> or "
+            "<code>/resetuser DMA-XXXX-XXXX-XXXX-XXXX</code>",
+        )
         return
 
-    found = await api.get_customer(customer_id)
+    found = await api.get_customer(ref)
 
     agreed = await confirm(
         update,
@@ -160,7 +160,7 @@ async def resetuser(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not agreed:
         return
 
-    result = await api.reset_by_customer(customer_id)
+    result = await api.reset_by_customer(found["id"])
     cleared = result.get("cleared", 0)
 
     await send(
@@ -173,7 +173,7 @@ async def resetuser(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     who = update.effective_user.username or update.effective_user.id
     await context.application.bot_data["log"](
-        f"{esc(who)} reset HWID for {esc(found['username'])} (id {customer_id})"
+        f"{esc(who)} reset HWID for {esc(found['username'])} (id {found['id']})"
     )
 
 

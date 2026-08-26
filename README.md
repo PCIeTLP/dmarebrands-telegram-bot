@@ -32,10 +32,20 @@ There is a [Discord version](https://github.com/PCIeTLP/dmarebrands-discord-bot)
 | `/buy <plan> [count]` | Mint new keys against your balance | `keys.buy` |
 | `/refund <code>` | Destroy an unsold key, money back | `keys.refund` |
 | `/customers [search]` | Everyone who redeemed your keys | `customers.read` |
-| `/customer <id>` | One customer and their machines | `customers.read` |
+| `/customer <id\|username\|key>` | One customer and their machines | `customers.read` |
 | `/resetkey <code>` | Clear their hardware lock, by key | `hwid.reset` |
-| `/resetuser <id>` | Clear their hardware lock, by customer id | `hwid.reset` |
+| `/resetuser <id\|username\|key>` | Clear their hardware lock | `hwid.reset` |
 | `/domains` | Your white-label domains and DNS state | `domains.read` |
+| `/status [product]` | Whether a product is up, and whether keys are frozen | `status.read` |
+| `/updates` | Latest Rust build and recent patch notes | `status.read` |
+| `/brand` | Your branding and public page links | `brand.read` |
+| `/setbrand <field> <value>` | Change one branding field | `brand.write` |
+| `/tickets [status]` | Your support threads | `tickets.read` |
+| `/ticket <ref>` | One thread with its messages | `tickets.read` |
+| `/newticket <subject> \| <message>` | Open a support ticket | `tickets.write` |
+| `/replyticket <ref> <message>` | Reply to a thread | `tickets.write` |
+| `/closeticket <ref>` | Close a thread | `tickets.write` |
+| `/activity [limit]` | Recent activity on your account | `activity.read` |
 | `/whoami` | What the bot will let *you* do | none |
 | `/help` | Every command, split by what you can use | none |
 
@@ -52,6 +62,7 @@ USERS_ADMIN=111111111
 USERS_KEYS=222222222
 USERS_HWID=333333333,444444444
 USERS_BILLING=555555555
+USERS_SUPPORT=777777777
 USERS_READ=666666666
 ```
 
@@ -61,6 +72,7 @@ USERS_READ=666666666
 | `USERS_KEYS` | buy, refund, read keys and customers |
 | `USERS_HWID` | reset hardware locks, read keys and customers |
 | `USERS_BILLING` | balance and ledger |
+| `USERS_SUPPORT` | product status, tickets, read customers |
 | `USERS_READ` | read-only across the board |
 
 **To give someone nothing but HWID resets, put them in `USERS_HWID` and nowhere else.** They can
@@ -114,7 +126,7 @@ You need a dmarebrands partner account. In the partner panel go to
 Not a partner yet? Ask in the [dmarebrands](https://dmarebrands.st) store.
 
 An API key is your whole partner account and **it can spend your balance**. Treat the `.env`
-like a password file. If it leaks, revoke it in the panel — that takes effect on the next
+like a password file. If it leaks, revoke it in the panel. That takes effect on the next
 request.
 
 ## Security notes
