@@ -14,6 +14,17 @@ KIND_LABEL = {
 }
 
 
+def product_lines(customer: dict) -> str:
+    rows = customer.get("products") or []
+    if not rows:
+        return "none"
+    return "\n".join(
+        f"{esc(p['product'])} · "
+        + (f"active until {until(p['expires_at'])}" if p.get("active") else "expired")
+        for p in rows
+    )
+
+
 def machine_lines(customer: dict) -> str:
     machines = customer.get("machines") or []
     if not machines:
@@ -75,6 +86,9 @@ async def customer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             pair("Product", found.get("product") or "none"),
             pair("Expires", until(found["expires_at"]) if found.get("expires_at") else "n/a"),
             pair("Joined", ago(found.get("created_at"))),
+            "",
+            title("Products"),
+            product_lines(found),
             "",
             title("Machines"),
             machine_lines(found),

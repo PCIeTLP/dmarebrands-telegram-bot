@@ -81,9 +81,10 @@ COMMANDS: tuple[Command, ...] = (
     ),
     Command(
         "updates",
-        "The latest Rust build and the recent patch notes",
+        "The latest game build and the recent patch notes",
         "status.read",
         status_mod.updates,
+        "[product]",
     ),
     Command(
         "brand",

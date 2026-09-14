@@ -42,12 +42,13 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def updates(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    result = await context.application.bot_data["api"].updates()
+    wanted = (context.args or [""])[0].strip() or None
+    result = await context.application.bot_data["api"].updates(wanted)
     build = result.get("current_build")
     notes = (result.get("updates") or [])[:5]
 
     body = [
-        title("Game updates"),
+        title(f"Game updates · {result.get('game') or wanted or 'rust'}"),
         pair("Current build", build["buildid"]) if build else "No build information yet.",
         pair("Seen", build["at"]) if build and build.get("at") else "",
         pair("Usual gap", f"{result['average_gap_days']} days") if result.get("average_gap_days") else "",

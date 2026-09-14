@@ -49,7 +49,7 @@ export const plans = {
         "",
         ...rows.map((plan) =>
           lines(
-            `${title(plan.label)} ${code(plan.id)}`,
+            `${title(`${plan.product} · ${plan.label}`)} ${code(plan.id)}`,
             `${plan.days} days · ${money(plan.your_price_usd)} for you · list ${money(
               plan.list_price_usd
             )} · you save ${money(plan.saving_usd)}`,
