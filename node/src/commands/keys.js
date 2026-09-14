@@ -130,7 +130,7 @@ export const buy = {
       return;
     }
 
-    const bought = await api.buyKeys(planId, count);
+    const bought = await api.buyKeys(planId, count, `telegram:${ctx.chat?.id ?? "dm"}:${ctx.message?.message_id ?? Date.now()}`);
     const codes = (bought.data ?? []).map((k) => k.code);
 
     await sendPrivate(

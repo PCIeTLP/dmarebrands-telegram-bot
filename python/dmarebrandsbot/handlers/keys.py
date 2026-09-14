@@ -128,7 +128,9 @@ async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not agreed:
         return
 
-    bought = await api.buy_keys(plan_id, count)
+    bought = await api.buy_keys(
+        plan_id, count, f"telegram:{update.effective_chat.id}:{update.effective_message.message_id}"
+    )
     codes = [k["code"] for k in bought.get("data") or []]
     plural = "" if len(codes) == 1 else "s"
 
