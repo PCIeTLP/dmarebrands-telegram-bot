@@ -1,6 +1,14 @@
 import { ago, code, esc, lines, money, pair, title, truncate, until } from "../format.js";
 import { confirm, send, sendPrivate } from "../reply.js";
 
+function productLines(customer) {
+  const list = customer.products ?? [];
+  if (!list.length) return "none";
+  return list
+    .map((p) => `${esc(p.product)} · ${p.active ? `active until ${until(p.expires_at)}` : "expired"}`)
+    .join("\n");
+}
+
 function machineLines(customer) {
   if (!customer.machines?.length) return "Nothing bound right now.";
   return customer.machines
@@ -66,6 +74,9 @@ export const customer = {
         pair("Product", found.product ?? "none"),
         pair("Expires", found.expires_at ? until(found.expires_at) : "n/a"),
         pair("Joined", ago(found.created_at)),
+        "",
+        title("Products"),
+        productLines(found),
         "",
         title("Machines"),
         machineLines(found)

@@ -37,7 +37,7 @@ There is a [Discord version](https://github.com/PCIeTLP/dmarebrands-discord-bot)
 | `/resetuser <id\|username\|key>` | Clear their hardware lock | `hwid.reset` |
 | `/domains` | Your white-label domains and DNS state | `domains.read` |
 | `/status [product]` | Whether a product is up, and whether keys are frozen | `status.read` |
-| `/updates` | Latest Rust build and recent patch notes | `status.read` |
+| `/updates [product]` | Latest build and recent patch notes for rust or wardogs | `status.read` |
 | `/brand` | Your branding and public page links | `brand.read` |
 | `/setbrand <field> <value>` | Change one branding field | `brand.write` |
 | `/tickets [status]` | Your support threads | `tickets.read` |

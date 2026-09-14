@@ -40,17 +40,19 @@ export const status = {
 
 export const updates = {
   name: "updates",
-  description: "The latest Rust build and the recent patch notes",
+  description: "The latest game build and the recent patch notes",
+  args: "[product]",
   scope: "status.read",
-  async run({ ctx, api }) {
-    const result = await api.updates();
+  async run({ ctx, api, args }) {
+    const wanted = (args[0] ?? "").trim() || undefined;
+    const result = await api.updates(wanted);
     const build = result.current_build;
     const notes = (result.updates ?? []).slice(0, 5);
 
     await send(
       ctx,
       lines(
-        title("Game updates"),
+        title(`Game updates · ${result.game ?? wanted ?? "rust"}`),
         build ? pair("Current build", build.buildid) : "No build information yet.",
         build?.at ? pair("Seen", build.at) : "",
         result.average_gap_days ? pair("Usual gap", `${result.average_gap_days} days`) : "",

@@ -40,7 +40,7 @@ async def plans(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     body = [title("Plans"), ""]
     for plan in rows:
-        body.append(f"{title(plan['label'])} {code(plan['id'])}")
+        body.append(f"{title(plan['product'] + ' · ' + plan['label'])} {code(plan['id'])}")
         body.append(
             f"{plan['days']} days · {money(plan['your_price_usd'])} for you · "
             f"list {money(plan['list_price_usd'])} · you save {money(plan['saving_usd'])}"
