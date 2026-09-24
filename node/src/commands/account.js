@@ -155,7 +155,7 @@ export const help = {
     await send(
       ctx,
       lines(
-        title("dmarebrands partner bot"),
+        title("Partner bot"),
         "",
         usable.length ? title("You can use") : "",
         ...usable.map((c) => `/${c.name}${c.args ? ` ${esc(c.args)}` : ""} - ${esc(c.description)}`),
@@ -176,7 +176,7 @@ export const start = {
       await send(
         ctx,
         lines(
-          title("dmarebrands partner bot"),
+          title("Partner bot"),
           "",
           "You are not on the allowlist yet.",
           `Your Telegram user ID is ${code(ctx.from.id)} - give that to whoever runs this bot.`

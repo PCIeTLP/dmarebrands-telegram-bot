@@ -115,6 +115,7 @@ export const resetkey = {
         "They will be able to bind a new machine on their next launch."
       ),
       confirmLabel: "Reset machine",
+      sensitive: true,
     });
 
     if (!answer.ok) {
@@ -123,12 +124,13 @@ export const resetkey = {
     }
 
     const result = await api.resetByKey(wanted);
-    await send(
+    await sendPrivate(
       ctx,
       lines(
         title("Machine reset"),
         `Cleared ${result.cleared} lock${result.cleared === 1 ? "" : "s"} for ${title(found.customer.username)}.`
-      )
+      ),
+      "Machine reset. Details sent privately."
     );
     await log(
       `${esc(ctx.from.username ?? ctx.from.id)} reset HWID for ${esc(found.customer.username)} via key ${code(wanted)}`
@@ -160,6 +162,7 @@ export const resetuser = {
         "They will be able to bind a new machine on their next launch."
       ),
       confirmLabel: "Reset machine",
+      sensitive: true,
     });
 
     if (!answer.ok) {
@@ -168,14 +171,15 @@ export const resetuser = {
     }
 
     const result = await api.resetByCustomer(found.id);
-    await send(
+    await sendPrivate(
       ctx,
       lines(
         title("Machine reset"),
         `Cleared ${result.cleared} lock${result.cleared === 1 ? "" : "s"} for ${title(found.username)}.`
-      )
+      ),
+      "Machine reset. Details sent privately."
     );
-    await log(`${esc(ctx.from.username ?? ctx.from.id)} reset HWID for ${esc(found.username)} (id ${id})`);
+    await log(`${esc(ctx.from.username ?? ctx.from.id)} reset HWID for ${esc(found.username)} (id ${found.id})`);
   },
 };
 

@@ -187,6 +187,7 @@ export const refund = {
         "It cannot be undone and the code stops working immediately."
       ),
       confirmLabel: `Refund ${money(found.cost_usd)}`,
+      sensitive: true,
     });
 
     if (!answer.ok) {
@@ -195,7 +196,7 @@ export const refund = {
     }
 
     const result = await api.refundKey(wanted);
-    await send(
+    await sendPrivate(
       ctx,
       lines(
         title("Refunded"),
@@ -203,7 +204,8 @@ export const refund = {
         "",
         pair("Returned", money(result.refunded_usd)),
         pair("Balance", money(result.balance_usd))
-      )
+      ),
+      `Refunded 1 key for ${money(result.refunded_usd)}. Details sent privately.`
     );
 
     await log(

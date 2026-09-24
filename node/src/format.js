@@ -64,5 +64,8 @@ export function pair(label, value) {
 
 export function truncate(text, max = 3800) {
   if (text.length <= max) return text;
-  return `${text.slice(0, max - 24)}\n\n<i>… list truncated</i>`;
+  const room = max - 24;
+  const line = text.lastIndexOf("\n", room);
+  const kept = line > room / 2 ? text.slice(0, line) : text.slice(0, room).replace(/<[^>]*$|&[#\w]*$/, "");
+  return `${kept}\n\n<i>… list truncated</i>`;
 }

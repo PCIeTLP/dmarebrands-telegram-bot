@@ -127,6 +127,7 @@ async def resetkey(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "They will be able to bind a new machine on their next launch.",
         ),
         confirm_label="Reset machine",
+        private=context,
     )
     if not agreed:
         return
@@ -134,12 +135,14 @@ async def resetkey(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     result = await api.reset_by_key(wanted)
     cleared = result.get("cleared", 0)
 
-    await send(
+    await send_private(
         update,
+        context,
         lines(
             title("Machine reset"),
             f"Cleared {cleared} lock{'' if cleared == 1 else 's'} for {title(holder['username'])}.",
         ),
+        "Machine reset. Details sent privately.",
     )
 
     who = update.effective_user.username or update.effective_user.id
@@ -170,6 +173,7 @@ async def resetuser(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "They will be able to bind a new machine on their next launch.",
         ),
         confirm_label="Reset machine",
+        private=context,
     )
     if not agreed:
         return
@@ -177,12 +181,14 @@ async def resetuser(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     result = await api.reset_by_customer(found["id"])
     cleared = result.get("cleared", 0)
 
-    await send(
+    await send_private(
         update,
+        context,
         lines(
             title("Machine reset"),
             f"Cleared {cleared} lock{'' if cleared == 1 else 's'} for {title(found['username'])}.",
         ),
+        "Machine reset. Details sent privately.",
     )
 
     who = update.effective_user.username or update.effective_user.id

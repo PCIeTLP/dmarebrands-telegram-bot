@@ -1,4 +1,4 @@
-import { code, esc, lines, pair, title } from "../format.js";
+import { code, lines, pair, title } from "../format.js";
 import { send } from "../reply.js";
 
 const BOOLS = { true: true, on: true, yes: true, false: false, off: false, no: false };
@@ -7,17 +7,17 @@ const FLAG_FIELDS = ["public_features", "public_guide"];
 
 function linkLine(label, url, isPublic) {
   if (!url) return pair(label, "not until your menu domain is live");
-  return pair(label, `${isPublic ? "public" : "sign in required"}\n${esc(url)}`);
+  return pair(label, `${isPublic ? "public" : "sign in required"}\n${url}`);
 }
 
 function view(b) {
   return lines(
-    title(b.name ? esc(b.name) : "No brand name set"),
+    title(b.name || "No brand name set"),
     "",
     pair("Brand colour", b.primary ?? "not set"),
     pair("Second colour", b.accent ?? "not set"),
     pair("Logo", b.has_logo ? "uploaded" : "none"),
-    pair("Store link", b.store_url ? esc(b.store_url) : "not set"),
+    pair("Store link", b.store_url || "not set"),
     "",
     linkLine("Features", b.features_url, b.public_features),
     linkLine("Setup guide", b.guide_url, b.public_guide)

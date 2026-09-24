@@ -10,6 +10,10 @@ from telegram.error import TelegramError
 from telegram.ext import ContextTypes
 
 CONFIRM_TIMEOUT_SECONDS = 60
+NO_PRIVATE_CHAT = (
+    "I could not message you privately, so I am not posting this in the group.\n"
+    "Open a chat with me and press <b>Start</b>, then run the command again."
+)
 
 
 @dataclass
@@ -30,11 +34,12 @@ async def send(update: Update, text: str, reply_markup: InlineKeyboardMarkup | N
     )
 
 
-async def send_private(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, public_note: str):
-    config = context.application.bot_data["config"]
-    is_private = update.effective_chat.type == "private"
+def _keep_private(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    return update.effective_chat.type != "private" and context.application.bot_data["config"].private_results
 
-    if is_private or not config.private_results:
+
+async def send_private(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, public_note: str):
+    if not _keep_private(update, context):
         return await send(update, text)
 
     try:
@@ -46,11 +51,31 @@ async def send_private(update: Update, context: ContextTypes.DEFAULT_TYPE, text:
         )
         return await send(update, public_note)
     except TelegramError:
-        return await send(
-            update,
-            "I could not message you privately, so I am not posting this in the group.\n"
-            "Open a chat with me and press <b>Start</b>, then run the command again.",
+        return await send(update, NO_PRIVATE_CHAT)
+
+
+async def _send_prompt(
+    update: Update,
+    text: str,
+    reply_markup: InlineKeyboardMarkup,
+    private: ContextTypes.DEFAULT_TYPE | None,
+):
+    if private is None or not _keep_private(update, private):
+        return await send(update, text, reply_markup)
+
+    try:
+        message = await private.bot.send_message(
+            update.effective_user.id,
+            text,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+            reply_markup=reply_markup,
         )
+    except TelegramError:
+        await send(update, NO_PRIVATE_CHAT)
+        return None
+    await send(update, "Sent you a confirmation in a private message.")
+    return message
 
 
 def confirm_keyboard(token: str, confirm_label: str) -> InlineKeyboardMarkup:
@@ -62,10 +87,17 @@ def confirm_keyboard(token: str, confirm_label: str) -> InlineKeyboardMarkup:
     )
 
 
-async def confirm(update: Update, text: str, confirm_label: str) -> bool:
+async def confirm(
+    update: Update,
+    text: str,
+    confirm_label: str,
+    private: ContextTypes.DEFAULT_TYPE | None = None,
+) -> bool:
     user_id = update.effective_user.id
     token = f"{user_id}:{int(time.time() * 1000)}"
-    message = await send(update, text, confirm_keyboard(token, confirm_label))
+    message = await _send_prompt(update, text, confirm_keyboard(token, confirm_label), private)
+    if message is None:
+        return False
 
     loop = asyncio.get_running_loop()
     future: asyncio.Future = loop.create_future()

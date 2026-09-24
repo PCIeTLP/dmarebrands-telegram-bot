@@ -66,7 +66,7 @@ def build(config: Config) -> Application:
     application.bot_data["log"] = log_action
 
     for command in COMMANDS:
-        application.add_handler(CommandHandler(command.name, _wrap(command)))
+        application.add_handler(CommandHandler(command.name, _wrap(command), block=False))
 
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(_on_error)
