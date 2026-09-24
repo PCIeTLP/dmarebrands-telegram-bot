@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-09-24
+
+Confirm buttons work again, and refunds and resets stay out of group chats.
+
+- Confirmation buttons work again. The bot handled one update at a time, so a command that
+  waited for its own Confirm press never saw it and timed out after a minute. Commands now
+  run alongside incoming updates, and the press is answered straight away.
+- `/keys buy` now waits out a purchase that is still running. The API answers a retry that
+  arrives before the first request finishes with `409 in_progress`, and the bot resends the
+  same `reference` after the `Retry-After` it gets (up to a minute) instead of reporting a
+  failure. If it is still unresolved after that, the bot says so and points at
+  `/keys unused` rather than inviting a second purchase.
+- `/refund`, `/resetkey` and `/resetuser` keep key codes and customer details out of
+  groups. With `PRIVATE_RESULTS` on, the confirmation and the result go to your private
+  chat and the group only sees a short note. If the bot cannot message you, nothing is done.
+- Long lists no longer break mid-tag. Truncation cuts at a line break where it can and
+  never leaves half an HTML tag or entity behind, so a long `/tickets list` still renders.
+- Names and links with `&`, `<` or `>` no longer show up double escaped in `/brand`,
+  `/tickets` and `/status`.
+- The Python client URL-encodes key codes, customer refs and ticket refs in request paths,
+  so a customer named `a?b` or `../stats` reaches the right endpoint. Node already did.
+- `/start` and `/help` are titled "Partner bot".
+- A machine reset by customer no longer throws in Node after the reset has gone through.
+
 ## 2026-09-14
 
 Buying is now safe to retry.

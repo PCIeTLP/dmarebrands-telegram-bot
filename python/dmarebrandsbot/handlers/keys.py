@@ -183,14 +183,16 @@ async def refund(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "It cannot be undone and the code stops working immediately.",
         ),
         confirm_label=f"Refund {money(found.get('cost_usd'))}",
+        private=context,
     )
 
     if not agreed:
         return
 
     result = await api.refund_key(wanted)
-    await send(
+    await send_private(
         update,
+        context,
         lines(
             title("Refunded"),
             f"{code(result['code'])} is gone.",
@@ -198,6 +200,7 @@ async def refund(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             pair("Returned", money(result.get("refunded_usd"))),
             pair("Balance", money(result.get("balance_usd"))),
         ),
+        f"Refunded 1 key for {money(result.get('refunded_usd'))}. Details sent privately.",
     )
 
     who = update.effective_user.username or update.effective_user.id

@@ -133,7 +133,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     usable = [c for c in COMMANDS if not c.scope or c.scope in granted]
     blocked = [c for c in COMMANDS if c.scope and c.scope not in granted]
 
-    body = [title("dmarebrands partner bot"), ""]
+    body = [title("Partner bot"), ""]
     if usable:
         body.append(title("You can use"))
         body.extend(
@@ -155,7 +155,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await send(
             update,
             lines(
-                title("dmarebrands partner bot"),
+                title("Partner bot"),
                 "",
                 "You are not on the allowlist yet.",
                 f"Your Telegram user ID is {code(update.effective_user.id)} - "

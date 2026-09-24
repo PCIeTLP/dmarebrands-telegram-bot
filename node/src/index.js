@@ -24,37 +24,41 @@ bot.use(async (ctx, next) => {
 
 bot.on("callback_query:data", handleCallback);
 
+async function runCommand(command, ctx) {
+  if (!chatAllowed(ctx.chat, config)) {
+    await send(
+      ctx,
+      "This bot is not set up for this chat. Message me privately, or ask the owner to add this chat to ALLOWED_CHATS."
+    );
+    return;
+  }
+
+  const granted = scopesFor(ctx.from?.id, config.userScopes);
+
+  if (command.scope && !allows(granted, command.scope)) {
+    await send(ctx, deniedMessage(command.scope));
+    return;
+  }
+
+  const args = (ctx.match ?? "").trim().split(/\s+/).filter(Boolean);
+
+  try {
+    await command.run({ ctx, api, config, granted, args, commands: COMMANDS, log: logAction });
+  } catch (err) {
+    const message = friendly(err);
+    const detail = err instanceof ApiError && err.requestId ? `\nRequest id: <code>${esc(err.requestId)}</code>` : "";
+
+    if (!(err instanceof ApiError)) {
+      console.error(`[/${command.name}]`, err);
+    }
+
+    await send(ctx, lines(title("That did not work"), esc(message) + detail)).catch(() => {});
+  }
+}
+
 for (const command of COMMANDS) {
-  bot.command(command.name, async (ctx) => {
-    if (!chatAllowed(ctx.chat, config)) {
-      await send(
-        ctx,
-        "This bot is not set up for this chat. Message me privately, or ask the owner to add this chat to ALLOWED_CHATS."
-      );
-      return;
-    }
-
-    const granted = scopesFor(ctx.from?.id, config.userScopes);
-
-    if (command.scope && !allows(granted, command.scope)) {
-      await send(ctx, deniedMessage(command.scope));
-      return;
-    }
-
-    const args = (ctx.match ?? "").trim().split(/\s+/).filter(Boolean);
-
-    try {
-      await command.run({ ctx, api, config, granted, args, commands: COMMANDS, log: logAction });
-    } catch (err) {
-      const message = friendly(err);
-      const detail = err instanceof ApiError && err.requestId ? `\nRequest id: <code>${esc(err.requestId)}</code>` : "";
-
-      if (!(err instanceof ApiError)) {
-        console.error(`[/${command.name}]`, err);
-      }
-
-      await send(ctx, lines(title("That did not work"), esc(message) + detail)).catch(() => {});
-    }
+  bot.command(command.name, (ctx) => {
+    runCommand(command, ctx).catch((err) => console.error(`[/${command.name}]`, err));
   });
 }
 

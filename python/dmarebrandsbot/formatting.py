@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -88,4 +89,7 @@ def pair(label: str, value: Any) -> str:
 def truncate(text: str, limit: int = 3800) -> str:
     if len(text) <= limit:
         return text
-    return text[: limit - 24] + "\n\n<i>… list truncated</i>"
+    room = limit - 24
+    line = text.rfind("\n", 0, room + 1)
+    kept = text[:line] if line > room / 2 else re.sub(r"<[^>]*$|&[#\w]*$", "", text[:room])
+    return kept + "\n\n<i>… list truncated</i>"

@@ -5,7 +5,7 @@ from typing import Any
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from ..formatting import code, esc, lines, pair, title
+from ..formatting import code, lines, pair, title
 from ..reply import send
 
 BOOLS = {"true": True, "on": True, "yes": True, "false": False, "off": False, "no": False}
@@ -17,17 +17,17 @@ def link_line(label: str, url: str | None, is_public: bool) -> str:
     if not url:
         return pair(label, "not until your menu domain is live")
     state = "public" if is_public else "sign in required"
-    return pair(label, f"{state}\n{esc(url)}")
+    return pair(label, f"{state}\n{url}")
 
 
 def view(b: dict[str, Any]) -> str:
     return lines(
-        title(esc(b["name"]) if b.get("name") else "No brand name set"),
+        title(b.get("name") or "No brand name set"),
         "",
         pair("Brand colour", b.get("primary") or "not set"),
         pair("Second colour", b.get("accent") or "not set"),
         pair("Logo", "uploaded" if b.get("has_logo") else "none"),
-        pair("Store link", esc(b["store_url"]) if b.get("store_url") else "not set"),
+        pair("Store link", b.get("store_url") or "not set"),
         "",
         link_line("Features", b.get("features_url"), bool(b.get("public_features"))),
         link_line("Setup guide", b.get("guide_url"), bool(b.get("public_guide"))),
