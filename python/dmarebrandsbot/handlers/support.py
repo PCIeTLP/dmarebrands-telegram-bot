@@ -54,7 +54,7 @@ async def ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         update,
         truncate(
             lines(
-                title(f"{t.get('ref')} {t.get('subject')}"),
+                title(f"{t.get('ref')} {t.get('subject') or ''}"),
                 f"{t.get('status')} · {t.get('priority')} · {t.get('category')}",
                 "",
                 thread or "No messages yet.",

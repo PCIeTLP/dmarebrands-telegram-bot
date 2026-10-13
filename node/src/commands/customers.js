@@ -86,6 +86,38 @@ export const customer = {
   },
 };
 
+// Asks before clearing a customer's hardware locks, then runs `reset` and reports back.
+// Returns whether the reset ran.
+async function confirmReset(ctx, customer, reset) {
+  const answer = await confirm(ctx, {
+    text: lines(
+      title("Confirm this reset"),
+      "",
+      `This clears every hardware lock on ${title(customer.username)} (id ${customer.id}).`,
+      "They will be able to bind a new machine on their next launch."
+    ),
+    confirmLabel: "Reset machine",
+    sensitive: true,
+  });
+
+  if (!answer.ok) {
+    if (answer.cancelled) await send(ctx, "Cancelled. Nothing was cleared.");
+    return false;
+  }
+
+  const result = await reset();
+  await sendPrivate(
+    ctx,
+    lines(
+      title("Machine reset"),
+      `Cleared ${result.cleared} lock${result.cleared === 1 ? "" : "s"} for ${title(customer.username)}.`
+    ),
+    "Machine reset. Details sent privately.",
+    "Machine reset. I could not message you the details privately."
+  );
+  return true;
+}
+
 export const resetkey = {
   name: "resetkey",
   description: "Clear a customer's hardware lock, found by key code",
@@ -107,31 +139,7 @@ export const resetkey = {
       return;
     }
 
-    const answer = await confirm(ctx, {
-      text: lines(
-        title("Confirm this reset"),
-        "",
-        `This clears every hardware lock on ${title(found.customer.username)} (id ${found.customer.id}).`,
-        "They will be able to bind a new machine on their next launch."
-      ),
-      confirmLabel: "Reset machine",
-      sensitive: true,
-    });
-
-    if (!answer.ok) {
-      if (!answer.timedOut) await send(ctx, "Cancelled. Nothing was cleared.");
-      return;
-    }
-
-    const result = await api.resetByKey(wanted);
-    await sendPrivate(
-      ctx,
-      lines(
-        title("Machine reset"),
-        `Cleared ${result.cleared} lock${result.cleared === 1 ? "" : "s"} for ${title(found.customer.username)}.`
-      ),
-      "Machine reset. Details sent privately."
-    );
+    if (!(await confirmReset(ctx, found.customer, () => api.resetByKey(wanted)))) return;
     await log(
       `${esc(ctx.from.username ?? ctx.from.id)} reset HWID for ${esc(found.customer.username)} via key ${code(wanted)}`
     );
@@ -154,31 +162,7 @@ export const resetuser = {
     }
 
     const found = await api.getCustomer(ref);
-    const answer = await confirm(ctx, {
-      text: lines(
-        title("Confirm this reset"),
-        "",
-        `This clears every hardware lock on ${title(found.username)} (id ${found.id}).`,
-        "They will be able to bind a new machine on their next launch."
-      ),
-      confirmLabel: "Reset machine",
-      sensitive: true,
-    });
-
-    if (!answer.ok) {
-      if (!answer.timedOut) await send(ctx, "Cancelled. Nothing was cleared.");
-      return;
-    }
-
-    const result = await api.resetByCustomer(found.id);
-    await sendPrivate(
-      ctx,
-      lines(
-        title("Machine reset"),
-        `Cleared ${result.cleared} lock${result.cleared === 1 ? "" : "s"} for ${title(found.username)}.`
-      ),
-      "Machine reset. Details sent privately."
-    );
+    if (!(await confirmReset(ctx, found, () => api.resetByCustomer(found.id)))) return;
     await log(`${esc(ctx.from.username ?? ctx.from.id)} reset HWID for ${esc(found.username)} (id ${found.id})`);
   },
 };

@@ -115,6 +115,7 @@ async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     agreed = await confirm(
         update,
+        context,
         lines(
             title("Confirm this purchase"),
             "",
@@ -133,6 +134,7 @@ async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
     codes = [k["code"] for k in bought.get("data") or []]
     plural = "" if len(codes) == 1 else "s"
+    summary = f"Bought {len(codes)} key{plural} for {money(bought.get('spent_usd'))}"
 
     await send_private(
         update,
@@ -145,7 +147,11 @@ async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             pair("Spent", money(bought.get("spent_usd"))),
             pair("Balance", money(bought.get("balance_usd"))),
         ),
-        f"Bought {len(codes)} key{plural} for {money(bought.get('spent_usd'))}. Codes sent privately.",
+        f"{summary}. Codes sent privately.",
+        fail_note=(
+            f"{summary}, but I could not message you the codes.\n"
+            "Open a chat with me and press <b>Start</b>, then run /keys unused there. Do not buy again."
+        ),
     )
 
     who = update.effective_user.username or update.effective_user.id
@@ -175,6 +181,7 @@ async def refund(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     agreed = await confirm(
         update,
+        context,
         lines(
             title("Confirm this refund"),
             "",
@@ -183,13 +190,14 @@ async def refund(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "It cannot be undone and the code stops working immediately.",
         ),
         confirm_label=f"Refund {money(found.get('cost_usd'))}",
-        private=context,
+        sensitive=True,
     )
 
     if not agreed:
         return
 
     result = await api.refund_key(wanted)
+    refunded = f"Refunded 1 key for {money(result.get('refunded_usd'))}"
     await send_private(
         update,
         context,
@@ -200,7 +208,8 @@ async def refund(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             pair("Returned", money(result.get("refunded_usd"))),
             pair("Balance", money(result.get("balance_usd"))),
         ),
-        f"Refunded 1 key for {money(result.get('refunded_usd'))}. Details sent privately.",
+        f"{refunded}. Details sent privately.",
+        fail_note=f"{refunded}. I could not message you the details privately.",
     )
 
     who = update.effective_user.username or update.effective_user.id

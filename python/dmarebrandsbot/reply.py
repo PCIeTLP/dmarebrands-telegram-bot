@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import itertools
 import time
 from dataclasses import dataclass
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes
@@ -23,6 +24,7 @@ class Pending:
 
 
 _pending: dict[str, Pending] = {}
+_prompt_ids = itertools.count(int(time.time() * 1000))
 
 
 async def send(update: Update, text: str, reply_markup: InlineKeyboardMarkup | None = None):
@@ -38,33 +40,21 @@ def _keep_private(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     return update.effective_chat.type != "private" and context.application.bot_data["config"].private_results
 
 
-async def send_private(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, public_note: str):
-    if not _keep_private(update, context):
-        return await send(update, text)
-
-    try:
-        await context.bot.send_message(
-            update.effective_user.id,
-            text,
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True,
-        )
-        return await send(update, public_note)
-    except TelegramError:
-        return await send(update, NO_PRIVATE_CHAT)
-
-
-async def _send_prompt(
+async def _send_direct(
     update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
     text: str,
-    reply_markup: InlineKeyboardMarkup,
-    private: ContextTypes.DEFAULT_TYPE | None,
-):
-    if private is None or not _keep_private(update, private):
-        return await send(update, text, reply_markup)
+    note: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+    fail_note: str = NO_PRIVATE_CHAT,
+) -> Message | None:
+    """Send text to the user's private chat and leave note in the group.
 
+    Returns the private message, or None after posting fail_note when the bot cannot
+    message the user.
+    """
     try:
-        message = await private.bot.send_message(
+        message = await context.bot.send_message(
             update.effective_user.id,
             text,
             parse_mode=ParseMode.HTML,
@@ -72,10 +62,26 @@ async def _send_prompt(
             reply_markup=reply_markup,
         )
     except TelegramError:
-        await send(update, NO_PRIVATE_CHAT)
+        await send(update, fail_note)
         return None
-    await send(update, "Sent you a confirmation in a private message.")
+    try:
+        await send(update, note)
+    except TelegramError:
+        pass  # The private message is already out, so losing the group note must not undo it.
     return message
+
+
+async def send_private(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    text: str,
+    public_note: str,
+    fail_note: str = NO_PRIVATE_CHAT,
+):
+    """fail_note replaces the "run the command again" advice for results of something already done."""
+    if not _keep_private(update, context):
+        return await send(update, text)
+    return await _send_direct(update, context, text, public_note, fail_note=fail_note)
 
 
 def confirm_keyboard(token: str, confirm_label: str) -> InlineKeyboardMarkup:
@@ -89,32 +95,48 @@ def confirm_keyboard(token: str, confirm_label: str) -> InlineKeyboardMarkup:
 
 async def confirm(
     update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
     text: str,
     confirm_label: str,
-    private: ContextTypes.DEFAULT_TYPE | None = None,
+    *,
+    sensitive: bool = False,
 ) -> bool:
     user_id = update.effective_user.id
-    token = f"{user_id}:{int(time.time() * 1000)}"
-    message = await _send_prompt(update, text, confirm_keyboard(token, confirm_label), private)
-    if message is None:
-        return False
+    token = f"{user_id}:{next(_prompt_ids)}"
+    privately = sensitive and _keep_private(update, context)
+    keyboard = confirm_keyboard(token, confirm_label)
 
-    loop = asyncio.get_running_loop()
-    future: asyncio.Future = loop.create_future()
+    # Listen before the prompt goes out, so a quick press is not turned away as expired.
+    future: asyncio.Future = asyncio.get_running_loop().create_future()
     _pending[token] = Pending(user_id=user_id, future=future)
-
     try:
-        return await asyncio.wait_for(future, timeout=CONFIRM_TIMEOUT_SECONDS)
-    except asyncio.TimeoutError:
-        try:
-            await message.edit_text(
-                f"{text}\n\n<i>Timed out. Nothing was done.</i>", parse_mode=ParseMode.HTML
+        if privately:
+            message = await _send_direct(
+                update, context, text, "Sent you a confirmation in a private message.", keyboard
             )
-        except TelegramError:
-            pass
-        return False
+        else:
+            message = await send(update, text, keyboard)
+        if message is None:
+            return False
+
+        try:
+            agreed = await asyncio.wait_for(future, timeout=CONFIRM_TIMEOUT_SECONDS)
+        except asyncio.TimeoutError:
+            await _mark(message, text, "Timed out")
+            return False
+        if not agreed and privately:
+            await _mark(message, text, "Cancelled")
+        return agreed
     finally:
         _pending.pop(token, None)
+
+
+async def _mark(message: Message, text: str, outcome: str) -> None:
+    """Show the outcome on the prompt itself, where the user acted."""
+    try:
+        await message.edit_text(f"{text}\n\n<i>{outcome}. Nothing was done.</i>", parse_mode=ParseMode.HTML)
+    except TelegramError:
+        pass
 
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -130,14 +152,18 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await query.answer("That confirmation is not yours.")
         return
 
-    await query.answer()
+    # Settle first, so the waiting command does not sit behind these two Telegram calls.
+    if not waiting.future.done():
+        waiting.future.set_result(verb == "ok")
+    # The press already counted, so a failure here must not tell the user it did not work.
+    try:
+        await query.answer()
+    except TelegramError:
+        pass
     try:
         await query.edit_message_reply_markup(reply_markup=None)
     except TelegramError:
         pass
-
-    if not waiting.future.done():
-        waiting.future.set_result(verb == "ok")
 
 
 def clear_pending() -> None:

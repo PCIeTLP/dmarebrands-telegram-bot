@@ -25,7 +25,7 @@ export const status = {
 
     const blocks = rows.map((p) =>
       lines(
-        title(`${p.label}: ${HEADLINE[p.status] ?? p.status}`),
+        title(`${p.label ?? ""}: ${HEADLINE[p.status] ?? p.status}`),
         p.beta ? "In beta." : "",
         p.frozen ? "Keys are frozen, so nobody is losing time." : "",
         p.sellable ? "" : "This one cannot be sold any more.",

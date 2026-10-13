@@ -126,12 +126,13 @@ export const buy = {
     });
 
     if (!answer.ok) {
-      if (!answer.timedOut) await send(ctx, "Cancelled. No keys were bought.");
+      if (answer.cancelled) await send(ctx, "Cancelled. No keys were bought.");
       return;
     }
 
     const bought = await api.buyKeys(planId, count, `telegram:${ctx.chat?.id ?? "dm"}:${ctx.message?.message_id ?? Date.now()}`);
     const codes = (bought.data ?? []).map((k) => k.code);
+    const summary = `Bought ${codes.length} key${codes.length === 1 ? "" : "s"} for ${money(bought.spent_usd)}`;
 
     await sendPrivate(
       ctx,
@@ -143,7 +144,9 @@ export const buy = {
         pair("Spent", money(bought.spent_usd)),
         pair("Balance", money(bought.balance_usd))
       ),
-      `Bought ${codes.length} key${codes.length === 1 ? "" : "s"} for ${money(bought.spent_usd)}. Codes sent privately.`
+      `${summary}. Codes sent privately.`,
+      `${summary}, but I could not message you the codes.\n` +
+        "Open a chat with me and press <b>Start</b>, then run /keys unused there. Do not buy again."
     );
 
     await log(
@@ -191,7 +194,7 @@ export const refund = {
     });
 
     if (!answer.ok) {
-      if (!answer.timedOut) await send(ctx, "Cancelled. The key was left alone.");
+      if (answer.cancelled) await send(ctx, "Cancelled. The key was left alone.");
       return;
     }
 
@@ -205,7 +208,8 @@ export const refund = {
         pair("Returned", money(result.refunded_usd)),
         pair("Balance", money(result.balance_usd))
       ),
-      `Refunded 1 key for ${money(result.refunded_usd)}. Details sent privately.`
+      `Refunded 1 key for ${money(result.refunded_usd)}. Details sent privately.`,
+      `Refunded 1 key for ${money(result.refunded_usd)}. I could not message you the details privately.`
     );
 
     await log(

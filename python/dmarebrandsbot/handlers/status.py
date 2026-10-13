@@ -29,7 +29,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         head = HEADLINE.get(p.get("status"), p.get("status"))
         blocks.append(
             lines(
-                title(f"{p.get('label')}: {head}"),
+                title(f"{p.get('label') or ''}: {head}"),
                 "In beta." if p.get("beta") else "",
                 "Keys are frozen, so nobody is losing time." if p.get("frozen") else "",
                 "" if p.get("sellable") else "This one cannot be sold any more.",

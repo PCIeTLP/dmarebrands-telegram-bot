@@ -62,10 +62,24 @@ export function pair(label, value) {
   return `${esc(label)}: <b>${esc(value)}</b>`;
 }
 
+const TRUNCATED = "\n\n<i>… list truncated</i>";
+
 export function truncate(text, max = 3800) {
   if (text.length <= max) return text;
-  const room = max - 24;
+  const room = max - TRUNCATED.length;
   const line = text.lastIndexOf("\n", room);
-  const kept = line > room / 2 ? text.slice(0, line) : text.slice(0, room).replace(/<[^>]*$|&[#\w]*$/, "");
-  return `${kept}\n\n<i>… list truncated</i>`;
+  // Without a line break nearby, cut mid-line but never through a tag, an entity or an emoji.
+  const kept =
+    line > room / 2 ? text.slice(0, line) : text.slice(0, room).replace(/<[^>]*$|&[#\w]*$|[\ud800-\udbff]$/, "");
+  return `${closeTags(kept)}${TRUNCATED}`;
+}
+
+// Closes any tag the cut left open, so Telegram can still parse the message.
+function closeTags(html) {
+  const open = [];
+  for (const [, closing, name] of html.matchAll(/<(\/?)([a-z][\w-]*)[^>]*>/gi)) {
+    if (closing) open.pop();
+    else open.push(name);
+  }
+  return html + open.reverse().map((name) => `</${name}>`).join("");
 }

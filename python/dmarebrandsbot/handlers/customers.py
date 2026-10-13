@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, Awaitable, Callable
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -97,6 +99,47 @@ async def customer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+async def _confirm_reset(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    customer: dict,
+    reset: Callable[[], Awaitable[dict[str, Any]]],
+) -> bool:
+    """Ask before clearing a customer's hardware locks, then run reset and report back.
+
+    Returns whether the reset ran.
+    """
+    agreed = await confirm(
+        update,
+        context,
+        lines(
+            title("Confirm this reset"),
+            "",
+            f"This clears every hardware lock on {title(customer['username'])} (id {customer['id']}).",
+            "They will be able to bind a new machine on their next launch.",
+        ),
+        confirm_label="Reset machine",
+        sensitive=True,
+    )
+    if not agreed:
+        return False
+
+    result = await reset()
+    cleared = result.get("cleared", 0)
+
+    await send_private(
+        update,
+        context,
+        lines(
+            title("Machine reset"),
+            f"Cleared {cleared} lock{'' if cleared == 1 else 's'} for {title(customer['username'])}.",
+        ),
+        "Machine reset. Details sent privately.",
+        fail_note="Machine reset. I could not message you the details privately.",
+    )
+    return True
+
+
 async def resetkey(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     api = context.application.bot_data["api"]
     wanted = (context.args or [""])[0].strip()
@@ -118,32 +161,8 @@ async def resetkey(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
 
-    agreed = await confirm(
-        update,
-        lines(
-            title("Confirm this reset"),
-            "",
-            f"This clears every hardware lock on {title(holder['username'])} (id {holder['id']}).",
-            "They will be able to bind a new machine on their next launch.",
-        ),
-        confirm_label="Reset machine",
-        private=context,
-    )
-    if not agreed:
+    if not await _confirm_reset(update, context, holder, lambda: api.reset_by_key(wanted)):
         return
-
-    result = await api.reset_by_key(wanted)
-    cleared = result.get("cleared", 0)
-
-    await send_private(
-        update,
-        context,
-        lines(
-            title("Machine reset"),
-            f"Cleared {cleared} lock{'' if cleared == 1 else 's'} for {title(holder['username'])}.",
-        ),
-        "Machine reset. Details sent privately.",
-    )
 
     who = update.effective_user.username or update.effective_user.id
     await context.application.bot_data["log"](
@@ -164,32 +183,8 @@ async def resetuser(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     found = await api.get_customer(ref)
 
-    agreed = await confirm(
-        update,
-        lines(
-            title("Confirm this reset"),
-            "",
-            f"This clears every hardware lock on {title(found['username'])} (id {found['id']}).",
-            "They will be able to bind a new machine on their next launch.",
-        ),
-        confirm_label="Reset machine",
-        private=context,
-    )
-    if not agreed:
+    if not await _confirm_reset(update, context, found, lambda: api.reset_by_customer(found["id"])):
         return
-
-    result = await api.reset_by_customer(found["id"])
-    cleared = result.get("cleared", 0)
-
-    await send_private(
-        update,
-        context,
-        lines(
-            title("Machine reset"),
-            f"Cleared {cleared} lock{'' if cleared == 1 else 's'} for {title(found['username'])}.",
-        ),
-        "Machine reset. Details sent privately.",
-    )
 
     who = update.effective_user.username or update.effective_user.id
     await context.application.bot_data["log"](

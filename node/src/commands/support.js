@@ -56,7 +56,7 @@ export const ticket = {
       ctx,
       truncate(
         lines(
-          title(`${t.ref} ${t.subject}`),
+          title(`${t.ref} ${t.subject ?? ""}`),
           `${t.status} · ${t.priority} · ${t.category}`,
           "",
           thread || "No messages yet."

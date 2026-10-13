@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-10-13
+
+A failed private message no longer invites a second purchase, and confirmations cannot be
+mixed up.
+
+- If `/buy` goes through but the bot cannot message you the codes, the group is told the
+  purchase went through, to open a private chat and run `/keys unused` there, and not to
+  buy again. Before, it said to run the command again, which bought a second batch.
+  `/refund`, `/resetkey` and `/resetuser` say the action was done in the same situation.
+- Two confirmations started in the same millisecond, for example when a restart replays a
+  backlog, no longer share an id. Pressing one could run the other command.
+- A confirmation listens for its button before it is sent, so a quick press is no longer
+  turned away as expired. If the short note in the group fails to send, the private prompt
+  still works.
+- Pressing Cancel on a private prompt is acknowledged on that prompt instead of in the
+  group.
+- A button press reaches the waiting command straight away instead of after two Telegram
+  calls. If Telegram then fails to acknowledge the press, Python no longer tells you it did
+  not work after the action has already run.
+- Once the API has answered a `/buy` with `in_progress`, a later timeout, dropped
+  connection, 5xx, 429 or unreadable error page no longer reads as "try again". The bot
+  keeps pointing at `/keys unused`. The wait also stops at its minute instead of sleeping
+  past it.
+- `Retry-After` values like `1.5` or an HTTP date no longer make Python give up or Node
+  retry without waiting.
+- A key code, customer ref or ticket ref of `.` or `..` no longer reaches a different
+  endpoint, and the Python client keeps `;`, `&` and similar characters encoded the way
+  Node does.
+- Long single-line messages, such as a ticket thread, are no longer cut through an emoji or
+  inside a closing tag, which Telegram rejected.
+- A ticket without a subject, or a product without a label, shows blank again instead of
+  `null`, `None` or `undefined`.
+- Older entries here used the Discord command names. They now say `/buy`, `/tickets` and
+  `/ticket`.
+
 ## 2026-09-24
 
 Confirm buttons work again, and refunds and resets stay out of group chats.
@@ -7,7 +42,7 @@ Confirm buttons work again, and refunds and resets stay out of group chats.
 - Confirmation buttons work again. The bot handled one update at a time, so a command that
   waited for its own Confirm press never saw it and timed out after a minute. Commands now
   run alongside incoming updates, and the press is answered straight away.
-- `/keys buy` now waits out a purchase that is still running. The API answers a retry that
+- `/buy` now waits out a purchase that is still running. The API answers a retry that
   arrives before the first request finishes with `409 in_progress`, and the bot resends the
   same `reference` after the `Retry-After` it gets (up to a minute) instead of reporting a
   failure. If it is still unresolved after that, the bot says so and points at
@@ -16,9 +51,10 @@ Confirm buttons work again, and refunds and resets stay out of group chats.
   groups. With `PRIVATE_RESULTS` on, the confirmation and the result go to your private
   chat and the group only sees a short note. If the bot cannot message you, nothing is done.
 - Long lists no longer break mid-tag. Truncation cuts at a line break where it can and
-  never leaves half an HTML tag or entity behind, so a long `/tickets list` still renders.
+  never leaves half an HTML tag or entity behind, so a long `/tickets` list or `/ticket`
+  thread still renders.
 - Names and links with `&`, `<` or `>` no longer show up double escaped in `/brand`,
-  `/tickets` and `/status`.
+  `/ticket` and `/status`.
 - The Python client URL-encodes key codes, customer refs and ticket refs in request paths,
   so a customer named `a?b` or `../stats` reaches the right endpoint. Node already did.
 - `/start` and `/help` are titled "Partner bot".
@@ -28,7 +64,7 @@ Confirm buttons work again, and refunds and resets stay out of group chats.
 
 Buying is now safe to retry.
 
-- `/keys buy` sends the chat and message id as the `reference` on `POST /keys`, which the
+- `/buy` sends the chat and message id as the `reference` on `POST /keys`, which the
   API now treats as an idempotency key. If the connection drops after the batch was
   minted, the bot retries and gets the same keys back instead of a second batch and a
   second charge.
