@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -51,7 +53,17 @@ async def plans(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    s = await context.application.bot_data["api"].stats()
+    api = context.application.bot_data["api"]
+    s, week = await asyncio.gather(api.stats(), api.stats_daily(7), return_exceptions=True)
+    if isinstance(s, BaseException):
+        raise s
+    totals = week.get("totals") if isinstance(week, dict) else None
+    recent = (
+        f"\n{title('Last 7 days')}\n{totals.get('redeemed', 0)} redeemed · {totals.get('new_customers', 0)} new customers · "
+        f"{money(totals.get('spent_usd'))} spent · up to {totals.get('peak_players', 0)} players a day"
+        if totals
+        else ""
+    )
     await send(
         update,
         lines(
@@ -62,9 +74,13 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             pair("Active", s.get("keys_active", 0)),
             pair("Expired", s.get("keys_expired", 0)),
             pair("Customers", s.get("customers", 0)),
+            pair("Live customers", s.get("live_customers", 0)),
+            pair("Online now", f"{s.get('online_now', 0)} · {s.get('playing_now', 0)} in game"),
             pair("Balance", money(s.get("balance_usd"))),
             pair("Spent all time", money(s.get("spent_usd"))),
             pair("HWID resets (30d)", s.get("hwid_resets_30d", 0)),
+            pair("Unread tickets", s.get("tickets_unread", 0)),
+            recent,
         ),
     )
 

@@ -3,8 +3,8 @@ from __future__ import annotations
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from ..formatting import code, esc, lines, money, pair, state_label, title, truncate, until
-from ..reply import confirm, send, send_private
+from ..formatting import ago, code, esc, lines, money, pair, state_label, title, truncate, until
+from ..reply import confirm, request_key, send, send_private
 
 FILTERS = {"all", "unused", "active", "expired"}
 
@@ -129,9 +129,7 @@ async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not agreed:
         return
 
-    bought = await api.buy_keys(
-        plan_id, count, f"telegram:{update.effective_chat.id}:{update.effective_message.message_id}"
-    )
+    bought = await api.buy_keys(plan_id, count, request_key(update))
     codes = [k["code"] for k in bought.get("data") or []]
     plural = "" if len(codes) == 1 else "s"
     summary = f"Bought {len(codes)} key{plural} for {money(bought.get('spent_usd'))}"
@@ -196,7 +194,7 @@ async def refund(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not agreed:
         return
 
-    result = await api.refund_key(wanted)
+    result = await api.refund_key(wanted, key=request_key(update))
     refunded = f"Refunded 1 key for {money(result.get('refunded_usd'))}"
     await send_private(
         update,
@@ -216,3 +214,22 @@ async def refund(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await context.application.bot_data["log"](
         f"{esc(who)} refunded {code(result['code'])} for {money(result.get('refunded_usd'))}"
     )
+
+
+async def redemptions(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    raw = (context.args or [""])[0]
+    limit = int(raw) if raw.isdigit() and 0 < int(raw) <= 25 else 10
+    result = await context.application.bot_data["api"].redemptions(limit=limit)
+    rows = result.get("data") or []
+
+    if not rows:
+        await send(update, "Nobody has redeemed one of your keys yet.")
+        return
+
+    listed = [
+        f"{code(r.get('code'))} - {r.get('days')}d {esc(r.get('product'))} · "
+        f"{title((r.get('customer') or {}).get('username') or 'deleted account')} · {ago(r.get('redeemed_at'))}"
+        for r in rows
+    ]
+    body = lines(title("Latest redemptions"), "", *listed, "", f"<i>{len(rows)} shown</i>")
+    await send_private(update, context, truncate(body), "Sent you the latest redemptions in a private message.")

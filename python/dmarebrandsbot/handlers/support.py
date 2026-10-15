@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from ..formatting import ago, code, esc, lines, pair, title, truncate
-from ..reply import send
+from ..reply import request_key, send
 
 STATUSES = ("all", "open", "answered", "resolved", "closed")
 
@@ -44,7 +44,13 @@ async def ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await send(update, f"Usage: {code('/ticket TKT-8H2QMD')}")
         return
 
-    t = await context.application.bot_data["api"].get_ticket(ref)
+    api = context.application.bot_data["api"]
+    t = await api.get_ticket(ref)
+    if t.get("unread"):
+        try:
+            await api.mark_ticket_read(ref)
+        except Exception:
+            pass
     thread = "\n\n".join(
         f"{title('You' if m.get('role') == 'partner' else 'Support')} {ago(m.get('created_at'))}\n{esc(m.get('body'))}"
         for m in (t.get("thread") or [])
@@ -75,7 +81,7 @@ async def newticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     made = await context.application.bot_data["api"].create_ticket(
-        subject=subject.strip(), body=body.strip()
+        subject=subject.strip(), body=body.strip(), key=request_key(update)
     )
     await send(
         update,
@@ -95,7 +101,7 @@ async def replyticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await send(update, f"Usage: {code('/replyticket TKT-8H2QMD One more thing')}")
         return
 
-    t = await context.application.bot_data["api"].reply_ticket(ref, body)
+    t = await context.application.bot_data["api"].reply_ticket(ref, body, key=request_key(update))
     await send(
         update,
         lines(title("Reply sent"), pair("Ticket", t.get("ref") or ref), pair("Messages", t.get("messages", "more"))),

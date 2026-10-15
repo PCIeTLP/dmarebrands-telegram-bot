@@ -5,7 +5,7 @@ import itertools
 import time
 from dataclasses import dataclass
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputFile, Message, Update
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes
@@ -48,11 +48,6 @@ async def _send_direct(
     reply_markup: InlineKeyboardMarkup | None = None,
     fail_note: str = NO_PRIVATE_CHAT,
 ) -> Message | None:
-    """Send text to the user's private chat and leave note in the group.
-
-    Returns the private message, or None after posting fail_note when the bot cannot
-    message the user.
-    """
     try:
         message = await context.bot.send_message(
             update.effective_user.id,
@@ -67,7 +62,7 @@ async def _send_direct(
     try:
         await send(update, note)
     except TelegramError:
-        pass  # The private message is already out, so losing the group note must not undo it.
+        pass
     return message
 
 
@@ -78,10 +73,42 @@ async def send_private(
     public_note: str,
     fail_note: str = NO_PRIVATE_CHAT,
 ):
-    """fail_note replaces the "run the command again" advice for results of something already done."""
     if not _keep_private(update, context):
         return await send(update, text)
     return await _send_direct(update, context, text, public_note, fail_note=fail_note)
+
+
+def request_key(update: Update) -> str:
+    chat = update.effective_chat.id if update.effective_chat else "dm"
+    message = update.effective_message.message_id if update.effective_message else int(time.time() * 1000)
+    return f"telegram:{chat}:{message}"
+
+
+async def send_file(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    data: bytes,
+    name: str,
+    caption: str,
+    public_note: str,
+):
+    document = InputFile(data, filename=name)
+    if not _keep_private(update, context):
+        return await update.effective_message.reply_document(
+            document, caption=caption, parse_mode=ParseMode.HTML
+        )
+    try:
+        sent = await context.bot.send_document(
+            update.effective_user.id, document, caption=caption, parse_mode=ParseMode.HTML
+        )
+    except TelegramError:
+        await send(update, NO_PRIVATE_CHAT)
+        return None
+    try:
+        await send(update, public_note)
+    except TelegramError:
+        pass
+    return sent
 
 
 def confirm_keyboard(token: str, confirm_label: str) -> InlineKeyboardMarkup:
@@ -106,7 +133,6 @@ async def confirm(
     privately = sensitive and _keep_private(update, context)
     keyboard = confirm_keyboard(token, confirm_label)
 
-    # Listen before the prompt goes out, so a quick press is not turned away as expired.
     future: asyncio.Future = asyncio.get_running_loop().create_future()
     _pending[token] = Pending(user_id=user_id, future=future)
     try:
@@ -132,7 +158,6 @@ async def confirm(
 
 
 async def _mark(message: Message, text: str, outcome: str) -> None:
-    """Show the outcome on the prompt itself, where the user acted."""
     try:
         await message.edit_text(f"{text}\n\n<i>{outcome}. Nothing was done.</i>", parse_mode=ParseMode.HTML)
     except TelegramError:
@@ -152,10 +177,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await query.answer("That confirmation is not yours.")
         return
 
-    # Settle first, so the waiting command does not sit behind these two Telegram calls.
     if not waiting.future.done():
         waiting.future.set_result(verb == "ok")
-    # The press already counted, so a failure here must not tell the user it did not work.
     try:
         await query.answer()
     except TelegramError:

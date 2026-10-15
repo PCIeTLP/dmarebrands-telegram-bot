@@ -1,5 +1,5 @@
 import { ago, code, esc, lines, pair, title, truncate } from "../format.js";
-import { send } from "../reply.js";
+import { requestKey, send } from "../reply.js";
 
 const STATUSES = ["all", "open", "answered", "resolved", "closed"];
 
@@ -48,6 +48,7 @@ export const ticket = {
     }
 
     const t = await api.getTicket(ref);
+    if (t.unread) await api.markTicketRead(ref).catch(() => {});
     const thread = (t.thread ?? [])
       .map((m) => `${title(m.role === "partner" ? "You" : "Support")} ${ago(m.created_at)}\n${esc(m.body)}`)
       .join("\n\n");
@@ -81,7 +82,7 @@ export const newticket = {
       return;
     }
 
-    const made = await api.createTicket({ subject: subject.trim(), body });
+    const made = await api.createTicket({ subject: subject.trim(), body }, requestKey(ctx));
     await send(
       ctx,
       lines(
@@ -106,7 +107,7 @@ export const replyticket = {
       return;
     }
 
-    const t = await api.replyTicket(ref, body);
+    const t = await api.replyTicket(ref, body, requestKey(ctx));
     await send(ctx, lines(title("Reply sent"), pair("Ticket", t.ref ?? ref), pair("Messages", t.messages ?? "more")));
   },
 };

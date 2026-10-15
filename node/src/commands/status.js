@@ -1,4 +1,4 @@
-import { esc, lines, pair, title } from "../format.js";
+import { ago, clip, esc, lines, pair, title, truncate } from "../format.js";
 import { send } from "../reply.js";
 
 const HEADLINE = {
@@ -59,6 +59,49 @@ export const updates = {
         notes.length ? "" : null,
         notes.length ? title("Recent notes") : null,
         ...notes.map((n) => `${esc(n.title)}\n${esc(n.url)}`)
+      )
+    );
+  },
+};
+
+const LANGS = new Set(["en", "ru", "zh", "cn"]);
+
+export const changelog = {
+  name: "changelog",
+  description: "What changed in the latest loader and product releases",
+  args: "[product] [en|ru|zh]",
+  scope: "status.read",
+  async run({ ctx, api, args }) {
+    let product;
+    let lang = "en";
+    for (const arg of args.map((a) => a.toLowerCase())) {
+      if (LANGS.has(arg)) lang = arg === "cn" ? "zh" : arg;
+      else product = arg;
+    }
+
+    const result = await api.changelogs({ product, lang, limit: 5 });
+    const rows = result.data ?? [];
+
+    if (!rows.length) {
+      await send(ctx, "No release notes yet.");
+      return;
+    }
+
+    await send(
+      ctx,
+      truncate(
+        lines(
+          title("Release notes"),
+          "",
+          rows
+            .map((r) =>
+              lines(
+                `${title(`${r.label} ${r.version}`)}${r.previous_version ? ` (from ${esc(r.previous_version)})` : ""} · ${ago(r.created_at)}`,
+                r.notes ? esc(clip(r.notes, 700)) : "<i>No notes for this release.</i>"
+              )
+            )
+            .join("\n\n")
+        )
       )
     );
   },

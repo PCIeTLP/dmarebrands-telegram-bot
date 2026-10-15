@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from ..formatting import code, lines, pair, title
-from ..reply import send
+from ..reply import request_key, send
 
 BOOLS = {"true": True, "on": True, "yes": True, "false": False, "off": False, "no": False}
 TEXT_FIELDS = ("name", "primary", "accent", "store_url")
@@ -64,7 +64,7 @@ async def setbrand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if flag is None:
             await send(update, f"Say on or off, for example {code(f'/setbrand {field} on')}")
             return
-        await send(update, view(await api.update_brand({field: flag})))
+        await send(update, view(await api.update_brand({field: flag}, key=request_key(update))))
         return
 
     if field not in TEXT_FIELDS:
@@ -72,4 +72,4 @@ async def setbrand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     patch = {field: None if value == "" or value.lower() == "clear" else value}
-    await send(update, view(await api.update_brand(patch)))
+    await send(update, view(await api.update_brand(patch, key=request_key(update))))

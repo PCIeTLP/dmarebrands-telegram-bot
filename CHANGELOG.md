@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-10-15
+
+Top-ups, account info for chargebacks, release notes and webhooks, and every change is now
+safe to retry.
+
+- `/topup 100 usdttrc20` opens a crypto payment for your balance and shows the exact amount to
+  send, the address, any memo or tag the coin needs and a link to the checkout page. Without
+  arguments it lists the popular coins. `/topups` lists your recent top-ups and
+  `/topups <ref>` shows where one stands. Starting one needs the new `billing.topup` scope,
+  which `USERS_BILLING` now includes.
+- `/requestinfo` asks for the account history of whoever redeemed a key, for a chargeback or
+  a dispute. `/accountinfo` lists your requests, and `/accountinfo <ref>` shows where one
+  stands and sends the zip once it is approved. They need the new `accountinfo.request` and
+  `accountinfo.read` scopes, both part of `USERS_SUPPORT`.
+- `/changelog [product] [en|ru|zh]` shows what changed in the loader and each product.
+- `/webhooks` lists your Discord webhooks, and `/webhook <id> test|pause|resume` sends a test
+  post, pauses one or turns it back on.
+- `/redemptions` lists the latest keys your customers redeemed, `/online` shows who is online
+  right now and `/customerkeys` lists every key you sold one customer.
+- `/stats` adds live customers, who is online, unread tickets and a line for the last 7 days.
+- `/ticket` marks the thread read, the same as opening it in the partner panel.
+- In a group, payment details, customer lists and account info zips go to you in a private
+  message, the same as key codes.
+- Refunds, resets, tickets, replies, branding changes, top-ups and account info requests send
+  an `Idempotency-Key` built from the chat and message. A retry after a dropped connection
+  gets the first result back instead of doing the work twice, and a request that is still
+  running is waited out for up to a minute, the way `/buy` already was.
+- A `429` with a `Retry-After` longer than 30 seconds, such as the limit on opening tickets,
+  is reported straight away instead of being retried into the same limit.
+- The Python bot reads `USERS_SUPPORT` and gives `USERS_KEYS`, `USERS_HWID` and `USERS_READ`
+  the same scopes as the Node bot. Before, anyone listed only in `USERS_SUPPORT` got nothing
+  in Python, and the other three groups could not see product status.
+
 ## 2026-10-13
 
 A failed private message no longer invites a second purchase, and confirmations cannot be

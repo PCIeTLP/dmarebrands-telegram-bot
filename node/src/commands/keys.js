@@ -1,5 +1,5 @@
-import { code, esc, lines, money, pair, stateLabel, title, truncate, until } from "../format.js";
-import { confirm, send, sendPrivate } from "../reply.js";
+import { ago, code, esc, lines, money, pair, stateLabel, title, truncate, until } from "../format.js";
+import { confirm, requestKey, send, sendPrivate } from "../reply.js";
 
 const FILTERS = new Set(["all", "unused", "active", "expired"]);
 
@@ -74,6 +74,41 @@ export const key = {
   },
 };
 
+export const redemptions = {
+  name: "redemptions",
+  description: "The latest keys your customers redeemed",
+  args: "[limit]",
+  scope: "keys.read",
+  async run({ ctx, api, args }) {
+    const wanted = Number(args[0]);
+    const limit = Number.isInteger(wanted) && wanted > 0 && wanted <= 25 ? wanted : 10;
+    const result = await api.redemptions({ limit });
+    const rows = result.data ?? [];
+
+    if (!rows.length) {
+      await send(ctx, "Nobody has redeemed one of your keys yet.");
+      return;
+    }
+
+    await sendPrivate(
+      ctx,
+      truncate(
+        lines(
+          title("Latest redemptions"),
+          "",
+          ...rows.map(
+            (r) =>
+              `${code(r.code)} - ${r.days}d ${esc(r.product)} · ${title(r.customer?.username ?? "deleted account")} · ${ago(r.redeemed_at)}`
+          ),
+          "",
+          `<i>${rows.length} shown</i>`
+        )
+      ),
+      "Sent you the latest redemptions in a private message."
+    );
+  },
+};
+
 export const buy = {
   name: "buy",
   description: "Buy new keys against the partner balance",
@@ -130,7 +165,7 @@ export const buy = {
       return;
     }
 
-    const bought = await api.buyKeys(planId, count, `telegram:${ctx.chat?.id ?? "dm"}:${ctx.message?.message_id ?? Date.now()}`);
+    const bought = await api.buyKeys(planId, count, requestKey(ctx));
     const codes = (bought.data ?? []).map((k) => k.code);
     const summary = `Bought ${codes.length} key${codes.length === 1 ? "" : "s"} for ${money(bought.spent_usd)}`;
 
@@ -198,7 +233,7 @@ export const refund = {
       return;
     }
 
-    const result = await api.refundKey(wanted);
+    const result = await api.refundKey(wanted, requestKey(ctx));
     await sendPrivate(
       ctx,
       lines(

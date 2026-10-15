@@ -6,12 +6,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from telegram import Bot  # noqa: E402
-from telegram.error import TelegramError  # noqa: E402
+from telegram import Bot
+from telegram.error import TelegramError
 
-from dmarebrandsbot.api import PartnerApi, friendly  # noqa: E402
-from dmarebrandsbot.config import GROUPS, SCOPES, load_config  # noqa: E402
-from dmarebrandsbot.handlers import COMMANDS, MENU  # noqa: E402
+from dmarebrandsbot.api import PartnerApi, friendly
+from dmarebrandsbot.config import GROUPS, SCOPES, load_config
+from dmarebrandsbot.handlers import COMMANDS, MENU
 
 problems = 0
 

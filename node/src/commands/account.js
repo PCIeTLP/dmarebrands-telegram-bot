@@ -66,7 +66,8 @@ export const stats = {
   description: "Keys issued, active, expired and customers",
   scope: "account.read",
   async run({ ctx, api }) {
-    const s = await api.stats();
+    const [s, week] = await Promise.all([api.stats(), api.statsDaily(7).catch(() => null)]);
+    const t = week?.totals;
     await send(
       ctx,
       lines(
@@ -77,9 +78,15 @@ export const stats = {
         pair("Active", s.keys_active),
         pair("Expired", s.keys_expired),
         pair("Customers", s.customers),
+        pair("Live customers", s.live_customers ?? 0),
+        pair("Online now", `${s.online_now ?? 0} · ${s.playing_now ?? 0} in game`),
         pair("Balance", money(s.balance_usd)),
         pair("Spent all time", money(s.spent_usd)),
-        pair("HWID resets (30d)", s.hwid_resets_30d)
+        pair("HWID resets (30d)", s.hwid_resets_30d),
+        pair("Unread tickets", s.tickets_unread ?? 0),
+        t
+          ? `\n${title("Last 7 days")}\n${t.redeemed} redeemed · ${t.new_customers} new customers · ${money(t.spent_usd)} spent · up to ${t.peak_players} players a day`
+          : ""
       )
     );
   },

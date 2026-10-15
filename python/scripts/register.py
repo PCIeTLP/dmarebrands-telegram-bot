@@ -6,11 +6,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from telegram import Bot  # noqa: E402
-from telegram.error import InvalidToken, TelegramError  # noqa: E402
+from telegram import Bot
+from telegram.error import InvalidToken, TelegramError
 
-from dmarebrandsbot.bot import menu_commands  # noqa: E402
-from dmarebrandsbot.config import load_config  # noqa: E402
+from dmarebrandsbot.bot import menu_commands
+from dmarebrandsbot.config import load_config
 
 
 async def main() -> int:

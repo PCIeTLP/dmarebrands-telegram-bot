@@ -82,6 +82,11 @@ def lines(*parts: Any) -> str:
     return "\n".join(str(p) for p in parts if p not in (None, "", False))
 
 
+def clip(text: Any, limit: int) -> str:
+    value = str(text or "")
+    return f"{value[: limit - 1]}…" if len(value) > limit else value
+
+
 def pair(label: str, value: Any) -> str:
     return f"{esc(label)}: <b>{esc(value)}</b>"
 
@@ -95,13 +100,11 @@ def truncate(text: str, limit: int = 3800) -> str:
         return text
     room = limit - len(_TRUNCATED)
     line = text.rfind("\n", 0, room + 1)
-    # Without a line break nearby, cut mid-line but never through a tag or an entity.
     kept = text[:line] if line > room / 2 else re.sub(r"<[^>]*$|&[#\w]*$", "", text[:room])
     return _close_tags(kept) + _TRUNCATED
 
 
 def _close_tags(html: str) -> str:
-    """Close any tag the cut left open, so Telegram can still parse the message."""
     still_open: list[str] = []
     for closing, name in _TAG.findall(html):
         if not closing:

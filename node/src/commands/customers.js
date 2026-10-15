@@ -1,5 +1,5 @@
-import { ago, code, esc, lines, money, pair, title, truncate, until } from "../format.js";
-import { confirm, send, sendPrivate } from "../reply.js";
+import { ago, code, esc, lines, money, pair, stateLabel, title, truncate, until } from "../format.js";
+import { confirm, requestKey, send, sendPrivate } from "../reply.js";
 
 function productLines(customer) {
   const list = customer.products ?? [];
@@ -86,8 +86,6 @@ export const customer = {
   },
 };
 
-// Asks before clearing a customer's hardware locks, then runs `reset` and reports back.
-// Returns whether the reset ran.
 async function confirmReset(ctx, customer, reset) {
   const answer = await confirm(ctx, {
     text: lines(
@@ -139,7 +137,7 @@ export const resetkey = {
       return;
     }
 
-    if (!(await confirmReset(ctx, found.customer, () => api.resetByKey(wanted)))) return;
+    if (!(await confirmReset(ctx, found.customer, () => api.resetByKey(wanted, requestKey(ctx))))) return;
     await log(
       `${esc(ctx.from.username ?? ctx.from.id)} reset HWID for ${esc(found.customer.username)} via key ${code(wanted)}`
     );
@@ -162,8 +160,82 @@ export const resetuser = {
     }
 
     const found = await api.getCustomer(ref);
-    if (!(await confirmReset(ctx, found, () => api.resetByCustomer(found.id)))) return;
+    if (!(await confirmReset(ctx, found, () => api.resetByCustomer(found.id, requestKey(ctx))))) return;
     await log(`${esc(ctx.from.username ?? ctx.from.id)} reset HWID for ${esc(found.username)} (id ${found.id})`);
+  },
+};
+
+export const customerkeys = {
+  name: "customerkeys",
+  description: "Every key you sold one customer",
+  args: "<id|username|key>",
+  scope: "customers.read",
+  async run({ ctx, api, args }) {
+    const ref = (args[0] ?? "").trim();
+    if (!ref) {
+      await send(ctx, "Usage: <code>/customerkeys theirname</code> or <code>/customerkeys DMA-XXXX-XXXX-XXXX-XXXX</code>");
+      return;
+    }
+
+    const result = await api.customerKeys(ref);
+    const rows = result.data ?? [];
+    const who = result.customer?.username ?? ref;
+
+    if (!rows.length) {
+      await send(ctx, `${esc(who)} has no keys from you.`);
+      return;
+    }
+
+    await sendPrivate(
+      ctx,
+      truncate(
+        lines(
+          title(`Keys for ${who}`),
+          "",
+          ...rows.map((key) => {
+            const expiry = key.expires_at ? ` · expires ${until(key.expires_at)}` : "";
+            return `${code(key.code)} - ${stateLabel(key.state)} · ${key.days}d ${esc(key.product)}${expiry}`;
+          }),
+          "",
+          `<i>${rows.length} key${rows.length === 1 ? "" : "s"}</i>`
+        )
+      ),
+      "Sent you their keys in a private message."
+    );
+  },
+};
+
+export const online = {
+  name: "online",
+  description: "Your customers who are online right now",
+  scope: "customers.read",
+  async run({ ctx, api }) {
+    const result = await api.online();
+    const rows = result.data ?? [];
+
+    if (!rows.length) {
+      await send(ctx, "Nobody is online right now.");
+      return;
+    }
+
+    await sendPrivate(
+      ctx,
+      truncate(
+        lines(
+          title(`Online now (${rows.length})`),
+          "",
+          ...rows.map((c) => {
+            const doing = c.playing?.length
+              ? `in ${esc(c.playing.join(", "))}`
+              : `menu open${c.menu?.length ? ` (${esc(c.menu.join(", "))})` : ""}`;
+            return `${title(c.username)} · ${doing} · since ${ago(c.online_since)}`;
+          }),
+          "",
+          `<i>${result.playing ?? 0} in game</i>`
+        )
+      ),
+      "Sent you who is online in a private message."
+    );
   },
 };
 

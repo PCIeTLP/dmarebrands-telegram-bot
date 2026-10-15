@@ -3,7 +3,7 @@ from __future__ import annotations
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from ..formatting import esc, lines, pair, title
+from ..formatting import ago, clip, esc, lines, pair, title, truncate
 from ..reply import send
 
 HEADLINE = {
@@ -59,3 +59,32 @@ async def updates(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         body.extend(f"{esc(n['title'])}\n{esc(n['url'])}" for n in notes)
 
     await send(update, lines(*body))
+
+
+LANGS = {"en", "ru", "zh", "cn"}
+
+
+async def changelog(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    product = None
+    lang = "en"
+    for arg in (a.lower() for a in context.args or []):
+        if arg in LANGS:
+            lang = "zh" if arg == "cn" else arg
+        else:
+            product = arg
+
+    result = await context.application.bot_data["api"].changelogs(product=product, lang=lang, limit=5)
+    rows = result.get("data") or []
+
+    if not rows:
+        await send(update, "No release notes yet.")
+        return
+
+    blocks = []
+    for r in rows:
+        since = f" (from {esc(r['previous_version'])})" if r.get("previous_version") else ""
+        notes = esc(clip(r["notes"], 700)) if r.get("notes") else "<i>No notes for this release.</i>"
+        heading = title(f"{r.get('label')} {r.get('version')}")
+        blocks.append(lines(f"{heading}{since} · {ago(r.get('created_at'))}", notes))
+
+    await send(update, truncate(lines(title("Release notes"), "", "\n\n".join(blocks))))

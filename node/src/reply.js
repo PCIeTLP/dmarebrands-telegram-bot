@@ -1,4 +1,4 @@
-import { InlineKeyboard } from "grammy";
+import { InlineKeyboard, InputFile } from "grammy";
 
 const CONFIRM_TIMEOUT_MS = 60_000;
 const HTML = { parse_mode: "HTML", link_preview_options: { is_disabled: true } };
@@ -16,8 +16,6 @@ function keepPrivate(ctx) {
   return ctx.chat?.type !== "private" && ctx.dmarebrands.config.privateResults;
 }
 
-// Sends `text` to the user's private chat and leaves `note` in the group. Returns the private
-// message, or null after posting `failNote` when the bot cannot message the user.
 async function sendDirect(ctx, text, note, { extra = {}, failNote = NO_PRIVATE_CHAT } = {}) {
   let message;
   try {
@@ -26,15 +24,32 @@ async function sendDirect(ctx, text, note, { extra = {}, failNote = NO_PRIVATE_C
     await send(ctx, failNote);
     return null;
   }
-  // The private message is already out, so losing the group note must not undo it.
   await send(ctx, note).catch(() => {});
   return message;
 }
 
-// `failNote` replaces the "run the command again" advice for results of something already done.
 export async function sendPrivate(ctx, text, publicNote, failNote) {
   if (!keepPrivate(ctx)) return send(ctx, text);
   return sendDirect(ctx, text, publicNote ?? "Sent you the details in a private message.", { failNote });
+}
+
+export function requestKey(ctx) {
+  return `telegram:${ctx.chat?.id ?? "dm"}:${ctx.message?.message_id ?? Date.now()}`;
+}
+
+export async function sendFile(ctx, data, name, caption, publicNote) {
+  const file = new InputFile(data, name);
+  const extra = { caption, parse_mode: "HTML" };
+  if (!keepPrivate(ctx)) return ctx.replyWithDocument(file, extra);
+  let sent;
+  try {
+    sent = await ctx.api.sendDocument(ctx.from.id, file, extra);
+  } catch {
+    await send(ctx, NO_PRIVATE_CHAT);
+    return null;
+  }
+  await send(ctx, publicNote).catch(() => {});
+  return sent;
 }
 
 export function confirmKeyboard(id, confirmLabel) {
@@ -48,7 +63,6 @@ export async function confirm(ctx, { text, confirmLabel, sensitive = false }) {
   const privately = sensitive && keepPrivate(ctx);
   const extra = { reply_markup: confirmKeyboard(id, confirmLabel) };
 
-  // Listen before the prompt goes out, so a quick press is not turned away as expired.
   const pressed = new Promise((settle) => pending.set(id, { userId: ctx.from.id, settle }));
   let message = null;
   try {
@@ -68,7 +82,6 @@ export async function confirm(ctx, { text, confirmLabel, sensitive = false }) {
   clearTimeout(timer);
   pending.delete(id);
 
-  // Show the outcome on the prompt itself when the caller's reply will not land next to it.
   const outcome = answer === null ? "Timed out" : privately && !answer ? "Cancelled" : null;
   if (outcome) {
     await ctx.api
@@ -77,7 +90,6 @@ export async function confirm(ctx, { text, confirmLabel, sensitive = false }) {
       })
       .catch(() => {});
   }
-  // A cancel on a private prompt is acknowledged there, so the caller must not repeat it in the group.
   return { ok: answer === true, cancelled: answer === false && !privately };
 }
 
@@ -96,7 +108,6 @@ export async function handleCallback(ctx) {
     return;
   }
 
-  // Settle first, so the waiting command does not sit behind these two Telegram calls.
   pending.delete(id);
   waiting.settle(verb === "ok");
   ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});

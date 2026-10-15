@@ -1,5 +1,5 @@
 import { code, lines, pair, title } from "../format.js";
-import { send } from "../reply.js";
+import { requestKey, send } from "../reply.js";
 
 const BOOLS = { true: true, on: true, yes: true, false: false, off: false, no: false };
 const TEXT_FIELDS = ["name", "primary", "accent", "store_url"];
@@ -64,7 +64,7 @@ export const setbrand = {
         await send(ctx, `Say on or off, for example ${code(`/setbrand ${field} on`)}`);
         return;
       }
-      await send(ctx, view(await api.updateBrand({ [field]: flag })));
+      await send(ctx, view(await api.updateBrand({ [field]: flag }, requestKey(ctx))));
       return;
     }
 
@@ -74,6 +74,6 @@ export const setbrand = {
     }
 
     const patch = { [field]: value === "" || value.toLowerCase() === "clear" ? null : value };
-    await send(ctx, view(await api.updateBrand(patch)));
+    await send(ctx, view(await api.updateBrand(patch, requestKey(ctx))));
   },
 };
