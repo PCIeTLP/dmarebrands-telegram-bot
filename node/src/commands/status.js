@@ -55,7 +55,9 @@ export const updates = {
         title(`Game updates · ${result.game ?? wanted ?? "rust"}`),
         build ? pair("Current build", build.buildid) : "No build information yet.",
         build?.at ? pair("Seen", build.at) : "",
-        result.average_gap_days ? pair("Usual gap", `${result.average_gap_days} days`) : "",
+        result.average_gap_days
+          ? pair("Usual gap", `${result.average_gap_days} day${result.average_gap_days === 1 ? "" : "s"}`)
+          : "",
         notes.length ? "" : null,
         notes.length ? title("Recent notes") : null,
         ...notes.map((n) => `${esc(n.title)}\n${esc(n.url)}`)
