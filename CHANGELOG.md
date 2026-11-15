@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.3.2
+
+Accounts with more than one brand can pick the one the bot works for, and support threads and
+activity stay out of group chats.
+
+- `BRAND_ID` in `.env` picks which of your brands the bot works for. Every request sends it as
+  `brand_id`, the account info zip download included. Leave it empty to keep using your first
+  brand. The startup log, the doctor script and `/account` show the brand in use, and a
+  `BRAND_ID` that is not one of your brands is reported as that instead of as a bad API key.
+- A key code, customer ref or ticket ref with a `/` or `\` in it no longer reaches a different
+  endpoint. The bot answers "Nothing matched that." without calling the API, and
+  `/customerkeys` only lists keys when the API names the customer they belong to.
+- `USERS_HWID` no longer grants `keys.read`, which let it see your unsold key codes with
+  `/keys unused`. Resets look up the key or customer themselves, so `/resetkey`, `/resetuser`
+  and `/customer` work as before. `/keys`, `/key` and `/redemptions` now need `USERS_KEYS` or
+  `USERS_READ`.
+- In a group, `/tickets`, `/ticket`, `/activity` and the answer to `/requestinfo` go to you in a
+  private message, the same as key codes. Ticket subjects and threads can hold key codes and
+  customer names, and the activity feed names customers. If the private message fails after
+  `/requestinfo`, the group is told the request went through and to run `/accountinfo <ref>` in
+  a private chat, so nobody sends it twice.
+- `/ticket` shows the newest messages of a long thread instead of the oldest, and says how many
+  earlier ones it left out. It marks the ticket read only once everything since your last message
+  has reached you in full. If a reply does not fit, the ticket stays unread and the bot points you
+  to the partner panel, and it also stays unread when the private message fails. Before, a long
+  first message pushed the latest reply out of view and the ticket was marked read anyway.
+- The Node bot skips commands sent while it was offline, the way the Python bot always has.
+  Before, a `/setbrand` or `/topup` sent during downtime ran once the bot came back, on top of
+  anything changed in the meantime.
+- The Python bot ignores edited commands, the way the Node bot always has. Editing an old
+  `/resetuser` message ran it again under the first message's request key, so the API replayed
+  the old answer and nothing was reset.
+
+The command menu did not change, so upgrading is a pull and a restart.
+
 ## 2026-10-21
 
 Deadlock is public, so the bot covers it the way it covers Rust and Wardogs.

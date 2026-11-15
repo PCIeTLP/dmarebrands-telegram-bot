@@ -131,7 +131,7 @@ export const requestinfo = {
       requestKey(ctx)
     );
 
-    await send(
+    await sendPrivate(
       ctx,
       lines(
         title("Request sent"),
@@ -140,7 +140,10 @@ export const requestinfo = {
         "",
         pair("Reference", made.ref),
         pair("Customer", made.customer?.username ?? "unknown")
-      )
+      ),
+      `Request ${esc(made.ref)} sent. Details sent privately.`,
+      `Request ${esc(made.ref)} sent, but I could not message you the details.\n` +
+        `Open a chat with me and press <b>Start</b>, then run ${code(`/accountinfo ${made.ref}`)} there.`
     );
 
     await log(

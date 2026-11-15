@@ -13,6 +13,7 @@ load_dotenv()
 TOKEN_RE = re.compile(r"^\d{6,}:[A-Za-z0-9_-]{30,}$")
 USER_ID_RE = re.compile(r"^\d{1,19}$")
 CHAT_ID_RE = re.compile(r"^-?\d{1,19}$")
+BRAND_ID_RE = re.compile(r"^[1-9]\d{0,9}$")
 
 SCOPES = (
     "account.read",
@@ -37,7 +38,7 @@ SCOPES = (
 GROUPS: dict[str, tuple[str, ...]] = {
     "USERS_ADMIN": SCOPES,
     "USERS_KEYS": ("account.read", "keys.read", "keys.buy", "keys.refund", "customers.read", "status.read"),
-    "USERS_HWID": ("hwid.reset", "keys.read", "customers.read", "status.read"),
+    "USERS_HWID": ("hwid.reset", "customers.read", "status.read"),
     "USERS_SUPPORT": (
         "account.read",
         "status.read",
@@ -71,6 +72,7 @@ class Config:
     token: str
     api_key: str
     api_base: str
+    brand_id: str | None = None
     user_scopes: dict[int, frozenset[str]] = field(default_factory=dict)
     allowed_chats: frozenset[int] = frozenset()
     private_results: bool = True
@@ -81,6 +83,15 @@ def _required(name: str) -> str:
     value = (os.environ.get(name) or "").strip()
     if not value:
         raise ConfigError(f"{name} is missing from your .env")
+    return value
+
+
+def _optional_brand() -> str | None:
+    value = (os.environ.get("BRAND_ID") or "").strip()
+    if not value:
+        return None
+    if not BRAND_ID_RE.match(value):
+        raise ConfigError(f"BRAND_ID must be a numeric brand ID, got {value!r}")
     return value
 
 
@@ -144,6 +155,7 @@ def _load() -> Config:
         token=token,
         api_key=api_key,
         api_base=base.rstrip("/"),
+        brand_id=_optional_brand(),
         user_scopes=_build_user_scopes(),
         allowed_chats=frozenset(_id_list("ALLOWED_CHATS", CHAT_ID_RE, "chat IDs")),
         private_results=(os.environ.get("PRIVATE_RESULTS") or "true").lower() != "false",

@@ -128,17 +128,22 @@ async def requestinfo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         key=request_key(update),
     )
     who = (made.get("customer") or {}).get("username") or "unknown"
+    ref = str(made.get("ref"))
 
-    await send(
+    await send_private(
         update,
+        context,
         lines(
             title("Request sent"),
-            f"We check every request before the zip is made. Check on it with {code('/accountinfo ' + str(made.get('ref')))}.",
-            f"Our replies show up in {code('/ticket ' + str(made.get('ref')))}.",
+            f"We check every request before the zip is made. Check on it with {code('/accountinfo ' + ref)}.",
+            f"Our replies show up in {code('/ticket ' + ref)}.",
             "",
-            pair("Reference", made.get("ref")),
+            pair("Reference", ref),
             pair("Customer", who),
         ),
+        f"Request {esc(ref)} sent. Details sent privately.",
+        f"Request {esc(ref)} sent, but I could not message you the details.\n"
+        f"Open a chat with me and press <b>Start</b>, then run {code('/accountinfo ' + ref)} there.",
     )
 
     user = update.effective_user

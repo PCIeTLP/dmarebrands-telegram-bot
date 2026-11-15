@@ -16,6 +16,7 @@ export const account = {
       lines(
         title(`Partner account: ${me.username}`),
         brand.name ? `Trading as ${esc(brand.name)}` : "No brand name set yet.",
+        brand.id ? pair("Brand id", brand.id) : "",
         "",
         pair("Balance", money(me.balance_usd)),
         pair("Discount", `${me.discount_pct}%`),

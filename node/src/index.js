@@ -74,13 +74,16 @@ process.on("unhandledRejection", (err) => console.error("unhandled rejection", e
 async function main() {
   try {
     const me = await api.me();
-    console.log(`Partner API connected as ${me.username} · balance $${me.balance_usd}`);
+    const name = me.brand?.name ? ` (${me.brand.name})` : "";
+    console.log(`Partner API connected as ${me.username} · brand ${me.brand?.id}${name} · balance $${me.balance_usd}`);
   } catch (err) {
-    console.error(`\nThe partner API rejected the bot's key: ${friendly(err)}`);
-    console.error("Fix DMAREBRANDS_API_KEY in your .env, then restart.\n");
+    const wrong = Boolean(config.brandId) && err instanceof ApiError && err.code === "not_found";
+    console.error(`\nThe partner API rejected the bot's ${wrong ? "BRAND_ID" : "key"}: ${friendly(err)}`);
+    console.error(`Fix ${wrong ? "BRAND_ID" : "DMAREBRANDS_API_KEY"} in your .env, then restart.\n`);
   }
 
   await bot.start({
+    drop_pending_updates: true,
     onStart: (info) => {
       console.log(`Logged in as @${info.username}`);
       console.log(`Serving ${BY_NAME.size} commands to ${config.userScopes.size} allowlisted user(s)`);

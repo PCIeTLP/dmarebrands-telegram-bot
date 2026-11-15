@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from telegram import Bot
 from telegram.error import TelegramError
 
-from dmarebrandsbot.api import PartnerApi, friendly
+from dmarebrandsbot.api import ApiError, PartnerApi, friendly
 from dmarebrandsbot.config import GROUPS, SCOPES, load_config
 from dmarebrandsbot.handlers import COMMANDS, MENU
 
@@ -32,12 +32,13 @@ async def main() -> int:
     ok("env parsed", f"{len(config.user_scopes)} allowlisted user(s)")
 
     print("\nchecking the partner API")
-    api = PartnerApi(config.api_key, config.api_base)
+    api = PartnerApi(config.api_key, config.api_base, config.brand_id)
     try:
         me = await api.me()
-        ok("API key works", f"{me.get('username')}, balance ${me.get('balance_usd')}")
+        ok("API key works", f"{me.get('username')}, brand {(me.get('brand') or {}).get('id')}, balance ${me.get('balance_usd')}")
     except Exception as err:
-        bad("API key rejected", friendly(err))
+        wrong = bool(config.brand_id) and isinstance(err, ApiError) and err.code == "not_found"
+        bad("BRAND_ID rejected" if wrong else "API key rejected", friendly(err))
     finally:
         await api.close()
 

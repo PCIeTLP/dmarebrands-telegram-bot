@@ -5,7 +5,7 @@ import logging
 from telegram import BotCommand, Update
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
-from telegram.ext import Application, ApplicationBuilder, CallbackQueryHandler, CommandHandler, ContextTypes
+from telegram.ext import Application, ApplicationBuilder, CallbackQueryHandler, CommandHandler, ContextTypes, filters
 
 from .api import ApiError, PartnerApi, friendly
 from .config import Config
@@ -18,7 +18,7 @@ log = logging.getLogger("dmarebrandsbot")
 
 
 def build(config: Config) -> Application:
-    api = PartnerApi(config.api_key, config.api_base)
+    api = PartnerApi(config.api_key, config.api_base, config.brand_id)
 
     async def log_action(text: str) -> None:
         if not config.log_chat_id:
@@ -31,12 +31,19 @@ def build(config: Config) -> Application:
     async def post_init(app: Application) -> None:
         try:
             me = await api.me()
+            brand = me.get("brand") or {}
+            name = f" ({brand['name']})" if brand.get("name") else ""
             log.info(
-                "Partner API connected as %s · balance $%s", me.get("username"), me.get("balance_usd")
+                "Partner API connected as %s · brand %s%s · balance $%s",
+                me.get("username"),
+                brand.get("id"),
+                name,
+                me.get("balance_usd"),
             )
         except Exception as err:
-            log.error("The partner API rejected the bot's key: %s", friendly(err))
-            log.error("Fix DMAREBRANDS_API_KEY in your .env, then restart.")
+            wrong = bool(config.brand_id) and isinstance(err, ApiError) and err.code == "not_found"
+            log.error("The partner API rejected the bot's %s: %s", "BRAND_ID" if wrong else "key", friendly(err))
+            log.error("Fix %s in your .env, then restart.", "BRAND_ID" if wrong else "DMAREBRANDS_API_KEY")
 
         published = await app.bot.get_my_commands()
         if published:
@@ -66,7 +73,9 @@ def build(config: Config) -> Application:
     application.bot_data["log"] = log_action
 
     for command in COMMANDS:
-        application.add_handler(CommandHandler(command.name, _wrap(command), block=False))
+        application.add_handler(
+            CommandHandler(command.name, _wrap(command), filters=filters.UpdateType.MESSAGE, block=False)
+        )
 
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_error_handler(_on_error)

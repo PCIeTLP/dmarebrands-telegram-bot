@@ -5,8 +5,8 @@ from typing import Any
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from ..formatting import ago, code, esc, lines, pair, title, truncate
-from ..reply import request_key, send
+from ..formatting import ago, code, esc, lines, newest, pair, title, truncate
+from ..reply import request_key, send, send_private
 
 STATUSES = ("all", "open", "answered", "resolved", "closed")
 
@@ -32,9 +32,11 @@ async def tickets(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await send(update, "No tickets match that.")
         return
 
-    await send(
+    await send_private(
         update,
+        context,
         truncate(lines(title(f"Tickets ({len(rows)})"), "", "\n\n".join(line(t) for t in rows))),
+        "Sent you your tickets in a private message.",
     )
 
 
@@ -46,27 +48,37 @@ async def ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     api = context.application.bot_data["api"]
     t = await api.get_ticket(ref)
-    if t.get("unread"):
+    messages = t.get("thread") or []
+    head = lines(
+        title(f"{t.get('ref')} {t.get('subject') or ''}"),
+        f"{t.get('status')} · {t.get('priority')} · {t.get('category')}",
+    )
+    thread, skipped, whole = newest(
+        [
+            f"{title('You' if m.get('role') == 'partner' else 'Support')} {ago(m.get('created_at'))}\n{esc(m.get('body'))}"
+            for m in messages
+        ],
+        3600 - len(head),
+    )
+    own = max((i for i, m in enumerate(messages) if m.get("role") == "partner"), default=-1)
+    seen = whole and skipped <= own + 1
+
+    sent = await send_private(
+        update,
+        context,
+        lines(
+            head,
+            f"<i>{skipped} earlier message{'' if skipped == 1 else 's'} not shown.</i>" if skipped else "",
+            thread or "No messages yet.",
+            "" if seen else "<i>Some replies are too long to show here. Read them in the partner panel.</i>",
+        ),
+        "Sent you the ticket in a private message.",
+    )
+    if sent and t.get("unread") and seen:
         try:
             await api.mark_ticket_read(ref)
         except Exception:
             pass
-    thread = "\n\n".join(
-        f"{title('You' if m.get('role') == 'partner' else 'Support')} {ago(m.get('created_at'))}\n{esc(m.get('body'))}"
-        for m in (t.get("thread") or [])
-    )
-
-    await send(
-        update,
-        truncate(
-            lines(
-                title(f"{t.get('ref')} {t.get('subject') or ''}"),
-                f"{t.get('status')} · {t.get('priority')} · {t.get('category')}",
-                "",
-                thread or "No messages yet.",
-            )
-        ),
-    )
 
 
 async def newticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -140,4 +152,9 @@ async def activity(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         about = f" · {esc(target)}" if target else ""
         listed.append(f"{code(e.get('action'))}{who}{about}\n{ago(e.get('created_at'))}")
 
-    await send(update, truncate(lines(title("Recent activity"), "", "\n\n".join(listed))))
+    await send_private(
+        update,
+        context,
+        truncate(lines(title("Recent activity"), "", "\n\n".join(listed))),
+        "Sent you the activity in a private message.",
+    )

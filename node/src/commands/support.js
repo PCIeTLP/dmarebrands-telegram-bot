@@ -1,5 +1,5 @@
-import { ago, code, esc, lines, pair, title, truncate } from "../format.js";
-import { requestKey, send } from "../reply.js";
+import { ago, code, esc, lines, newest, pair, title, truncate } from "../format.js";
+import { requestKey, send, sendPrivate } from "../reply.js";
 
 const STATUSES = ["all", "open", "answered", "resolved", "closed"];
 
@@ -31,7 +31,11 @@ export const tickets = {
       return;
     }
 
-    await send(ctx, truncate(lines(title(`Tickets (${rows.length})`), "", rows.map(line).join("\n\n"))));
+    await sendPrivate(
+      ctx,
+      truncate(lines(title(`Tickets (${rows.length})`), "", rows.map(line).join("\n\n"))),
+      "Sent you your tickets in a private message."
+    );
   },
 };
 
@@ -48,22 +52,25 @@ export const ticket = {
     }
 
     const t = await api.getTicket(ref);
-    if (t.unread) await api.markTicketRead(ref).catch(() => {});
-    const thread = (t.thread ?? [])
-      .map((m) => `${title(m.role === "partner" ? "You" : "Support")} ${ago(m.created_at)}\n${esc(m.body)}`)
-      .join("\n\n");
-
-    await send(
-      ctx,
-      truncate(
-        lines(
-          title(`${t.ref} ${t.subject ?? ""}`),
-          `${t.status} · ${t.priority} · ${t.category}`,
-          "",
-          thread || "No messages yet."
-        )
-      )
+    const thread = t.thread ?? [];
+    const head = lines(title(`${t.ref} ${t.subject ?? ""}`), `${t.status} · ${t.priority} · ${t.category}`);
+    const shown = newest(
+      thread.map((m) => `${title(m.role === "partner" ? "You" : "Support")} ${ago(m.created_at)}\n${esc(m.body)}`),
+      3600 - head.length
     );
+    const seen = shown.whole && shown.skipped <= thread.map((m) => m.role).lastIndexOf("partner") + 1;
+
+    const sent = await sendPrivate(
+      ctx,
+      lines(
+        head,
+        shown.skipped ? `<i>${shown.skipped} earlier message${shown.skipped === 1 ? "" : "s"} not shown.</i>` : "",
+        shown.text || "No messages yet.",
+        seen ? "" : "<i>Some replies are too long to show here. Read them in the partner panel.</i>"
+      ),
+      "Sent you the ticket in a private message."
+    );
+    if (sent && t.unread && seen) await api.markTicketRead(ref).catch(() => {});
   },
 };
 
@@ -144,7 +151,7 @@ export const activity = {
       return;
     }
 
-    await send(
+    await sendPrivate(
       ctx,
       truncate(
         lines(
@@ -158,7 +165,8 @@ export const activity = {
             })
             .join("\n\n")
         )
-      )
+      ),
+      "Sent you the activity in a private message."
     );
   },
 };

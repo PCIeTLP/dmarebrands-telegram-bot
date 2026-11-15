@@ -69,13 +69,30 @@ export function pair(label, value) {
 
 const TRUNCATED = "\n\n<i>… list truncated</i>";
 
-export function truncate(text, max = 3800) {
-  if (text.length <= max) return text;
-  const room = max - TRUNCATED.length;
+function cut(text, room) {
   const line = text.lastIndexOf("\n", room);
   const kept =
     line > room / 2 ? text.slice(0, line) : text.slice(0, room).replace(/<[^>]*$|&[#\w]*$|[\ud800-\udbff]$/, "");
-  return `${closeTags(kept)}${TRUNCATED}`;
+  return closeTags(kept);
+}
+
+export function truncate(text, max = 3800) {
+  if (text.length <= max) return text;
+  return `${cut(text, max - TRUNCATED.length)}${TRUNCATED}`;
+}
+
+export function newest(blocks, max = 3800) {
+  let text = "";
+  let kept = 0;
+  while (kept < blocks.length) {
+    const block = blocks[blocks.length - 1 - kept];
+    const next = text ? `${block}\n\n${text}` : block;
+    if (next.length > max) break;
+    text = next;
+    kept += 1;
+  }
+  if (kept || !blocks.length) return { text, skipped: blocks.length - kept, whole: true };
+  return { text: `${cut(blocks[blocks.length - 1], max - 1)}…`, skipped: blocks.length - 1, whole: false };
 }
 
 function closeTags(html) {

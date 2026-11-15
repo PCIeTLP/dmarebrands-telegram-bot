@@ -3,6 +3,7 @@ import "dotenv/config";
 const TOKEN_RE = /^\d{6,}:[A-Za-z0-9_-]{30,}$/;
 const USER_ID_RE = /^\d{1,19}$/;
 const CHAT_ID_RE = /^-?\d{1,19}$/;
+const BRAND_ID_RE = /^[1-9]\d{0,9}$/;
 
 export const SCOPES = [
   "account.read",
@@ -27,7 +28,7 @@ export const SCOPES = [
 export const GROUPS = {
   USERS_ADMIN: SCOPES,
   USERS_KEYS: ["account.read", "keys.read", "keys.buy", "keys.refund", "customers.read", "status.read"],
-  USERS_HWID: ["hwid.reset", "keys.read", "customers.read", "status.read"],
+  USERS_HWID: ["hwid.reset", "customers.read", "status.read"],
   USERS_SUPPORT: [
     "account.read",
     "status.read",
@@ -68,6 +69,13 @@ function idList(name, pattern, label) {
   const bad = parts.filter((p) => !pattern.test(p));
   if (bad.length) throw new ConfigError(`${name} contains invalid ${label}: ${bad.join(", ")}`);
   return parts;
+}
+
+function optionalBrand() {
+  const raw = (process.env.BRAND_ID ?? "").trim();
+  if (!raw) return null;
+  if (!BRAND_ID_RE.test(raw)) throw new ConfigError(`BRAND_ID must be a numeric brand ID, got "${raw}"`);
+  return raw;
 }
 
 function buildUserScopes() {
@@ -129,6 +137,7 @@ function load() {
     token,
     apiKey,
     apiBase: base.replace(/\/+$/, ""),
+    brandId: optionalBrand(),
     userScopes: buildUserScopes(),
     allowedChats: new Set(idList("ALLOWED_CHATS", CHAT_ID_RE, "chat IDs")),
     privateResults: (process.env.PRIVATE_RESULTS ?? "true").toLowerCase() !== "false",

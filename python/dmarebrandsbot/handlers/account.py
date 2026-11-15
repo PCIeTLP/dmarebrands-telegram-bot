@@ -20,6 +20,7 @@ async def account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         lines(
             title(f"Partner account: {me.get('username')}"),
             f"Trading as {esc(brand['name'])}" if brand.get("name") else "No brand name set yet.",
+            pair("Brand id", brand["id"]) if brand.get("id") else "",
             "",
             pair("Balance", money(me.get("balance_usd"))),
             pair("Discount", f"{me.get('discount_pct')}%"),

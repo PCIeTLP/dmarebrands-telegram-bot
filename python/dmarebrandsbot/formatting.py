@@ -95,13 +95,30 @@ _TRUNCATED = "\n\n<i>… list truncated</i>"
 _TAG = re.compile(r"<(/?)([a-z][\w-]*)[^>]*>", re.IGNORECASE)
 
 
+def _cut(text: str, room: int) -> str:
+    line = text.rfind("\n", 0, room + 1)
+    kept = text[:line] if line > room / 2 else re.sub(r"<[^>]*$|&[#\w]*$", "", text[:room])
+    return _close_tags(kept)
+
+
 def truncate(text: str, limit: int = 3800) -> str:
     if len(text) <= limit:
         return text
-    room = limit - len(_TRUNCATED)
-    line = text.rfind("\n", 0, room + 1)
-    kept = text[:line] if line > room / 2 else re.sub(r"<[^>]*$|&[#\w]*$", "", text[:room])
-    return _close_tags(kept) + _TRUNCATED
+    return _cut(text, limit - len(_TRUNCATED)) + _TRUNCATED
+
+
+def newest(blocks: list[str], limit: int = 3800) -> tuple[str, int, bool]:
+    text = ""
+    kept = 0
+    for block in reversed(blocks):
+        candidate = f"{block}\n\n{text}" if text else block
+        if len(candidate) > limit:
+            break
+        text = candidate
+        kept += 1
+    if kept or not blocks:
+        return text, len(blocks) - kept, True
+    return _cut(blocks[-1], limit - 1) + "…", len(blocks) - 1, False
 
 
 def _close_tags(html: str) -> str:

@@ -52,7 +52,7 @@ There is a [Discord version](https://github.com/PCIeTLP/dmarebrands-discord-bot)
 | `/webhooks` | Your Discord webhooks for status changes and update notes | `brand.read` |
 | `/webhook <id> <test\|pause\|resume>` | Send a test post, or pause and resume a webhook | `brand.write` |
 | `/tickets [status]` | Your support threads | `tickets.read` |
-| `/ticket <ref>` | One thread with its messages, which also marks it read | `tickets.read` |
+| `/ticket <ref>` | The newest messages in a thread, which also marks it read | `tickets.read` |
 | `/newticket <subject> \| <message>` | Open a support ticket | `tickets.write` |
 | `/replyticket <ref> <message>` | Reply to a thread | `tickets.write` |
 | `/closeticket <ref>` | Close a thread | `tickets.write` |
@@ -81,14 +81,14 @@ USERS_READ=666666666
 |---|---|
 | `USERS_ADMIN` | everything |
 | `USERS_KEYS` | buy, refund, read keys and customers |
-| `USERS_HWID` | reset hardware locks, read keys and customers |
+| `USERS_HWID` | reset hardware locks, look up customers |
 | `USERS_BILLING` | balance, ledger and top-ups |
 | `USERS_SUPPORT` | product status, tickets, account info requests, read customers |
-| `USERS_READ` | read-only across the board |
+| `USERS_READ` | read-only across the board, unsold key codes included |
 
 **To give someone nothing but HWID resets, put them in `USERS_HWID` and nowhere else.** They can
-look up a key or customer to find who they are resetting, and clear the lock. They cannot see
-your balance, cannot buy, cannot refund.
+look up a customer by id, username or a key they redeemed to find who they are resetting, and
+clear the lock. They cannot see your unsold keys or your balance, cannot buy, cannot refund.
 
 Anyone not on a list gets nothing at all. They can still run `/whoami`, which tells them their
 user ID so they can ask you for access. Message [@userinfobot](https://t.me/userinfobot) to find
@@ -103,9 +103,9 @@ everyone in that group, forever.
 So the bot handles key codes carefully:
 
 - **In a private chat** it just replies. That is already private.
-- **In a group** anything containing key codes, customer details, payment details or an account
-  info zip is sent to you in a direct message instead, and the group only sees a short note like *"Bought 1 key for $28.00. Codes
-  sent privately."*
+- **In a group** anything containing key codes, customer details, support tickets, the activity
+  feed, payment details or an account info zip is sent to you in a direct message instead, and
+  the group only sees a short note like *"Bought 1 key for $28.00. Codes sent privately."*
 - **If the DM fails** because you have never started a chat with the bot, it posts nothing and
   tells you to open one. It will not fall back to the group.
 
@@ -135,6 +135,12 @@ You need a dmarebrands partner account. In the partner panel go to
 `DMAREBRANDS_API_KEY`. It is shown once and never again.
 
 Not a partner yet? Ask in the [dmarebrands](https://dmarebrands.st) store.
+
+If your account has more than one brand, set `BRAND_ID` to the id of the brand this bot works
+for. The [API](https://partners.dmarebrands.st/partners/api) page of the partner panel lists each
+brand with its `brand_id`. Keys, customers and tickets belong to one brand, while your balance,
+discount and top-ups are shared by all of them. Leave `BRAND_ID` empty to use your first brand,
+and run a second copy of the bot for a second brand. `/account` shows the brand the bot is using.
 
 An API key is your whole partner account and **it can spend your balance**. Treat the `.env`
 like a password file. If it leaks, revoke it in the panel. That takes effect on the next
