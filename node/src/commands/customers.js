@@ -1,4 +1,4 @@
-import { ago, code, esc, lines, money, pair, stateLabel, title, truncate, until } from "../format.js";
+import { ago, code, esc, keyLength, lines, money, pair, stateLabel, title, truncate, until } from "../format.js";
 import { confirm, requestKey, send, sendPrivate } from "../reply.js";
 
 function productLines(customer) {
@@ -194,7 +194,7 @@ export const customerkeys = {
           "",
           ...rows.map((key) => {
             const expiry = key.expires_at ? ` · expires ${until(key.expires_at)}` : "";
-            return `${code(key.code)} - ${stateLabel(key.state)} · ${key.days}d ${esc(key.product)}${expiry}`;
+            return `${code(key.code)} - ${stateLabel(key.state)} · ${keyLength(key)} ${esc(key.product)}${expiry}`;
           }),
           "",
           `<i>${rows.length} key${rows.length === 1 ? "" : "s"}</i>`

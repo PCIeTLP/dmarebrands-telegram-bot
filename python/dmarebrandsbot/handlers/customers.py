@@ -5,7 +5,7 @@ from typing import Any, Awaitable, Callable
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from ..formatting import ago, code, esc, lines, money, pair, state_label, title, truncate, until
+from ..formatting import ago, code, esc, key_length, lines, money, pair, state_label, title, truncate, until
 from ..reply import confirm, request_key, send, send_private
 
 KIND_LABEL = {
@@ -257,7 +257,7 @@ async def customerkeys(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     listed = []
     for k in rows:
         expiry = f" · expires {until(k['expires_at'])}" if k.get("expires_at") else ""
-        listed.append(f"{code(k.get('code'))} - {state_label(k.get('state'))} · {k.get('days')}d {esc(k.get('product'))}{expiry}")
+        listed.append(f"{code(k.get('code'))} - {state_label(k.get('state'))} · {key_length(k)} {esc(k.get('product'))}{expiry}")
 
     plural = "" if len(rows) == 1 else "s"
     body = lines(title(f"Keys for {who}"), "", *listed, "", f"<i>{len(rows)} key{plural}</i>")

@@ -3,7 +3,7 @@ from __future__ import annotations
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from ..formatting import ago, code, esc, lines, money, pair, state_label, title, truncate, until
+from ..formatting import ago, code, esc, key_length, lines, money, pair, state_label, title, truncate, until
 from ..reply import confirm, request_key, send, send_private
 
 FILTERS = {"all", "unused", "active", "expired"}
@@ -15,7 +15,7 @@ def key_line(key: dict) -> str:
     expiry = f" · expires {until(key['expires_at'])}" if key.get("expires_at") else ""
     return (
         f"{code(key['code'])} - {state_label(key.get('state'))} · "
-        f"{key.get('days')}d {esc(key.get('product'))}{owner}{expiry}"
+        f"{key_length(key)} {esc(key.get('product'))}{owner}{expiry}"
     )
 
 
@@ -62,7 +62,7 @@ async def key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             title(f"Key {found['code']}"),
             "",
             pair("State", state_label(found.get("state"))),
-            pair("Product", f"{found.get('days')}d {found.get('product')}"),
+            pair("Product", f"{key_length(found)} {found.get('product')}"),
             pair("Cost", money(found.get("cost_usd"))),
             pair("Redeemed", until(found["redeemed_at"]) if found.get("redeemed_at") else "not yet"),
             pair("Expires", until(found["expires_at"]) if found.get("expires_at") else "n/a"),
@@ -183,7 +183,7 @@ async def refund(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         lines(
             title("Confirm this refund"),
             "",
-            f"{code(found['code'])} - {found['days']}d {esc(found['product'])}",
+            f"{code(found['code'])} - {key_length(found)} {esc(found['product'])}",
             f"This destroys the key and puts {money(found.get('cost_usd'))} back on the balance.",
             "It cannot be undone and the code stops working immediately.",
         ),
@@ -227,7 +227,7 @@ async def redemptions(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         return
 
     listed = [
-        f"{code(r.get('code'))} - {r.get('days')}d {esc(r.get('product'))} · "
+        f"{code(r.get('code'))} - {key_length(r)} {esc(r.get('product'))} · "
         f"{title((r.get('customer') or {}).get('username') or 'deleted account')} · {ago(r.get('redeemed_at'))}"
         for r in rows
     ]

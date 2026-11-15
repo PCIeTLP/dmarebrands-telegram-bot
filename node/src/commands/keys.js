@@ -1,4 +1,4 @@
-import { ago, code, esc, lines, money, pair, stateLabel, title, truncate, until } from "../format.js";
+import { ago, code, esc, keyLength, lines, money, pair, stateLabel, title, truncate, until } from "../format.js";
 import { confirm, requestKey, send, sendPrivate } from "../reply.js";
 
 const FILTERS = new Set(["all", "unused", "active", "expired"]);
@@ -6,7 +6,7 @@ const FILTERS = new Set(["all", "unused", "active", "expired"]);
 function keyLine(key) {
   const owner = key.customer ? ` · ${esc(key.customer.username)}` : "";
   const expiry = key.expires_at ? ` · expires ${until(key.expires_at)}` : "";
-  return `${code(key.code)} - ${stateLabel(key.state)} · ${key.days}d ${esc(key.product)}${owner}${expiry}`;
+  return `${code(key.code)} - ${stateLabel(key.state)} · ${keyLength(key)} ${esc(key.product)}${owner}${expiry}`;
 }
 
 export const keys = {
@@ -63,7 +63,7 @@ export const key = {
         title(`Key ${found.code}`),
         "",
         pair("State", stateLabel(found.state)),
-        pair("Product", `${found.days}d ${found.product}`),
+        pair("Product", `${keyLength(found)} ${found.product}`),
         pair("Cost", money(found.cost_usd)),
         pair("Redeemed", found.redeemed_at ? until(found.redeemed_at) : "not yet"),
         pair("Expires", found.expires_at ? until(found.expires_at) : "n/a"),
@@ -98,7 +98,7 @@ export const redemptions = {
           "",
           ...rows.map(
             (r) =>
-              `${code(r.code)} - ${r.days}d ${esc(r.product)} · ${title(r.customer?.username ?? "deleted account")} · ${ago(r.redeemed_at)}`
+              `${code(r.code)} - ${keyLength(r)} ${esc(r.product)} · ${title(r.customer?.username ?? "deleted account")} · ${ago(r.redeemed_at)}`
           ),
           "",
           `<i>${rows.length} shown</i>`
@@ -220,7 +220,7 @@ export const refund = {
       text: lines(
         title("Confirm this refund"),
         "",
-        `${code(found.code)} - ${found.days}d ${esc(found.product)}`,
+        `${code(found.code)} - ${keyLength(found)} ${esc(found.product)}`,
         `This destroys the key and puts ${money(found.cost_usd)} back on the balance.`,
         "It cannot be undone and the code stops working immediately."
       ),

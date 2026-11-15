@@ -103,3 +103,7 @@ function closeTags(html) {
   }
   return html + open.reverse().map((name) => `</${name}>`).join("");
 }
+
+export function keyLength(key) {
+  return key?.duration || `${key?.days ?? 0}d`;
+}

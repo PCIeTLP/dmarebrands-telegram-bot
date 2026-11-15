@@ -129,3 +129,6 @@ def _close_tags(html: str) -> str:
         elif still_open:
             still_open.pop()
     return html + "".join(f"</{name}>" for name in reversed(still_open))
+
+def key_length(key: Any) -> str:
+    return str(key.get("duration") or f"{key.get('days', 0)}d")
