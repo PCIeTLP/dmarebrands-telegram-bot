@@ -34,7 +34,7 @@ COMMANDS: tuple[Command, ...] = (
     Command("account", "Partner account, brand and headline numbers", "account.read", account_mod.account),
     Command("plans", "Every plan you can buy, with your discounted price", "account.read", account_mod.plans),
     Command("stats", "Keys issued, active, expired and customers", "account.read", account_mod.stats),
-    Command("balance", "Partner balance and how to top it up", "billing.read", customers_mod.balance),
+    Command("balance", "Partner balance or credit and how to pay", "billing.read", customers_mod.balance),
     Command("ledger", "Recent movements on the partner balance", "billing.read", customers_mod.ledger, "[limit]"),
     Command(
         "topup",
@@ -49,6 +49,20 @@ COMMANDS: tuple[Command, ...] = (
         "billing.read",
         billing_mod.topups,
         "[ref]",
+    ),
+    Command(
+        "invoices",
+        "Your monthly credit invoices, or one of them by number",
+        "billing.read",
+        billing_mod.invoices,
+        "[number]",
+    ),
+    Command(
+        "payinvoice",
+        "Open a payment for what is still due on an invoice",
+        "billing.topup",
+        billing_mod.payinvoice,
+        "<number> <coin> [amount]",
     ),
     Command(
         "keys",

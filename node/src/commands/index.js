@@ -4,7 +4,7 @@ import { balance, customer, customerkeys, customers, ledger, online, resetkey, r
 import { changelog, status, updates } from "./status.js";
 import { brand, setbrand } from "./brand.js";
 import { activity, closeticket, newticket, replyticket, ticket, tickets } from "./support.js";
-import { topup, topups } from "./billing.js";
+import { invoices, payinvoice, topup, topups } from "./billing.js";
 import { accountinfo, requestinfo } from "./accountinfo.js";
 import { webhook, webhooks } from "./webhooks.js";
 
@@ -18,6 +18,8 @@ export const COMMANDS = [
   ledger,
   topup,
   topups,
+  invoices,
+  payinvoice,
   keys,
   key,
   buy,

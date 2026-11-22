@@ -26,10 +26,12 @@ There is a [Discord version](https://github.com/PCIeTLP/dmarebrands-discord-bot)
 | `/account` | Partner account, brand and headline numbers | `account.read` |
 | `/plans` | Every plan with your discounted price | `account.read` |
 | `/stats` | Keys, customers, who is online and the last 7 days | `account.read` |
-| `/balance` | Available balance and how to top up | `billing.read` |
+| `/balance` | Available balance or credit, and how to pay | `billing.read` |
 | `/ledger [limit]` | Recent movements on the balance | `billing.read` |
 | `/topup <amount> <coin>` | Open a crypto payment for your balance. Without arguments it lists popular coins | `billing.topup` |
 | `/topups [ref]` | Your recent top-ups, or where one stands | `billing.read` |
+| `/invoices [number]` | Your monthly credit invoices, or one of them with the keys used on it | `billing.read` |
+| `/payinvoice <number> <coin> [amount]` | Open a crypto payment for what is still due on an invoice | `billing.topup` |
 | `/keys [filter] [search]` | Keys you have issued | `keys.read` |
 | `/key <code>` | One key, including who redeemed it | `keys.read` |
 | `/buy <plan> [count]` | Mint new keys against your balance | `keys.buy` |

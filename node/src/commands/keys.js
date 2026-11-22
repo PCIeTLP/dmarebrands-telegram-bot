@@ -137,13 +137,30 @@ export const buy = {
     const total = Math.round(chosen.your_price_usd * count * 100) / 100;
     const balance = await api.balance();
     const available = Number(balance.balance_usd);
+    const onCredit = balance.billing?.mode === "credit";
+    const due = balance.billing?.open_invoice;
+
+    if (balance.billing?.buying_paused && due) {
+      await send(
+        ctx,
+        lines(
+          title("Buying is paused"),
+          `Invoice ${code(due.number)} has ${money(due.due_usd)} still due. Pay it with ${code(
+            `/payinvoice ${due.number} usdttrc20`
+          )} to buy keys again.`
+        )
+      );
+      return;
+    }
 
     if (available < total) {
       await send(
         ctx,
         lines(
-          title("Not enough balance"),
-          `${count} × ${esc(chosen.label)} costs ${money(total)} but the account only has ${money(available)}.`
+          title(onCredit ? "Not enough credit" : "Not enough balance"),
+          `${count} × ${esc(chosen.label)} costs ${money(total)} but the account only has ${money(available)}${
+            onCredit ? " of credit left" : ""
+          }.`
         )
       );
       return;
@@ -154,10 +171,10 @@ export const buy = {
         title("Confirm this purchase"),
         "",
         `${count} × ${esc(chosen.label)} (${chosen.days} days)`,
-        `${money(chosen.your_price_usd)} each · ${money(total)} total`,
-        `Balance after: ${money(available - total)}`
+        `${money(chosen.your_price_usd)} each · ${money(total)} total${onCredit ? ", charged when each key is redeemed" : ""}`,
+        `${onCredit ? "Credit left after" : "Balance after"}: ${money(available - total)}`
       ),
-      confirmLabel: `Buy for ${money(total)}`,
+      confirmLabel: onCredit ? `Buy on credit, ${money(total)}` : `Buy for ${money(total)}`,
     });
 
     if (!answer.ok) {
@@ -167,17 +184,18 @@ export const buy = {
 
     const bought = await api.buyKeys(planId, count, requestKey(ctx));
     const codes = (bought.data ?? []).map((k) => k.code);
-    const summary = `Bought ${codes.length} key${codes.length === 1 ? "" : "s"} for ${money(bought.spent_usd)}`;
+    const plural = `${codes.length} key${codes.length === 1 ? "" : "s"}`;
+    const summary = bought.on_credit ? `Took ${plural} on credit (${money(total)})` : `Bought ${plural} for ${money(bought.spent_usd)}`;
 
     await sendPrivate(
       ctx,
       lines(
-        title(`Bought ${codes.length} key${codes.length === 1 ? "" : "s"}`),
+        title(`${bought.on_credit ? "Took" : "Bought"} ${plural}`),
         "",
         codes.map((c) => code(c)).join("\n"),
         "",
-        pair("Spent", money(bought.spent_usd)),
-        pair("Balance", money(bought.balance_usd))
+        bought.on_credit ? pair("On credit", money(total)) : pair("Spent", money(bought.spent_usd)),
+        pair(bought.on_credit ? "Credit left" : "Balance", money(bought.balance_usd))
       ),
       `${summary}. Codes sent privately.`,
       `${summary}, but I could not message you the codes.\n` +
@@ -185,9 +203,11 @@ export const buy = {
     );
 
     await log(
-      `${esc(ctx.from.username ?? ctx.from.id)} bought ${codes.length} × ${esc(chosen.label)} for ${money(
-        bought.spent_usd
-      )}`
+      bought.on_credit
+        ? `${esc(ctx.from.username ?? ctx.from.id)} took ${codes.length} × ${esc(chosen.label)} on credit (${money(total)})`
+        : `${esc(ctx.from.username ?? ctx.from.id)} bought ${codes.length} × ${esc(chosen.label)} for ${money(
+            bought.spent_usd
+          )}`
     );
   },
 };
@@ -218,13 +238,15 @@ export const refund = {
 
     const answer = await confirm(ctx, {
       text: lines(
-        title("Confirm this refund"),
+        title(found.credit ? "Confirm this return" : "Confirm this refund"),
         "",
         `${code(found.code)} - ${keyLength(found)} ${esc(found.product)}`,
-        `This destroys the key and puts ${money(found.cost_usd)} back on the balance.`,
+        found.credit
+          ? `This destroys the key and frees ${money(found.cost_usd)} of credit. It was never charged, so no money moves.`
+          : `This destroys the key and puts ${money(found.cost_usd)} back on the balance.`,
         "It cannot be undone and the code stops working immediately."
       ),
-      confirmLabel: `Refund ${money(found.cost_usd)}`,
+      confirmLabel: found.credit ? "Return key" : `Refund ${money(found.cost_usd)}`,
       sensitive: true,
     });
 
@@ -234,6 +256,11 @@ export const refund = {
     }
 
     const result = await api.refundKey(wanted, requestKey(ctx));
+    if (result.returned) {
+      await send(ctx, lines(title("Returned"), `${code(result.code)} is gone and its credit is free again.`));
+      await log(`${esc(ctx.from.username ?? ctx.from.id)} returned ${code(result.code)} to credit`);
+      return;
+    }
     await sendPrivate(
       ctx,
       lines(

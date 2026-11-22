@@ -119,3 +119,112 @@ export const topups = {
     );
   },
 };
+
+function invoiceState(inv) {
+  if (inv.status === "paid") return "Paid";
+  if (inv.stock_locked) return "Keys locked";
+  if (inv.overdue) return "Due";
+  return "Unpaid";
+}
+
+function day(value) {
+  return value ? esc(String(value).slice(0, 10)) : "?";
+}
+
+function lastDay(value) {
+  const ms = Date.parse(value ?? "");
+  return Number.isNaN(ms) ? "?" : new Date(ms - 1000).toISOString().slice(0, 10);
+}
+
+export const invoices = {
+  name: "invoices",
+  description: "Your monthly credit invoices, or one of them by number",
+  args: "[number]",
+  scope: "billing.read",
+  async run({ ctx, api, args }) {
+    const number = (args[0] ?? "").trim().toUpperCase();
+
+    if (number) {
+      const inv = await api.getInvoice(number);
+      const used = (inv.lines ?? []).filter((line) => line.kind === "usage");
+      await sendPrivate(
+        ctx,
+        truncate(
+          lines(
+            title(`Invoice ${inv.number}`),
+            "",
+            pair("Amount", money(inv.amount_usd)),
+            pair("Paid", money(inv.paid_usd)),
+            pair("Still due", money(inv.due_usd)),
+            pair("Period", `${day(inv.period_start)} to ${lastDay(inv.period_end)}`),
+            pair("State", invoiceState(inv)),
+            "",
+            used.length
+              ? used
+                  .map(
+                    (line) =>
+                      `${line.qty} × ${esc(line.duration ?? "")} ${esc(line.product ?? "")} at ${money(line.unit_usd)} · ${money(
+                        Math.abs(Number(line.amount_usd))
+                      )}`
+                  )
+                  .join("\n")
+              : "No keys used in this period."
+          )
+        ),
+        "Sent you the invoice in a private message."
+      );
+      return;
+    }
+
+    const result = await api.invoices({ limit: 12 });
+    const rows = result.data ?? [];
+    if (!rows.length) {
+      await send(ctx, "No invoices yet.");
+      return;
+    }
+    await sendPrivate(
+      ctx,
+      truncate(
+        lines(
+          title("Invoices"),
+          "",
+          ...rows.map(
+            (inv) =>
+              `${code(inv.number)} - ${day(inv.period_start)} to ${lastDay(inv.period_end)} · ${money(inv.amount_usd)} · ${invoiceState(inv)}${
+                inv.status === "open" ? ` · ${money(inv.due_usd)} due` : ""
+              }`
+          )
+        )
+      ),
+      "Sent you your invoices in a private message."
+    );
+  },
+};
+
+export const payinvoice = {
+  name: "payinvoice",
+  description: "Open a payment for what is still due on an invoice",
+  args: "<number> <coin> [amount]",
+  scope: "billing.topup",
+  async run({ ctx, api, args, log }) {
+    const number = (args[0] ?? "").trim().toUpperCase();
+    const coin = (args[1] ?? "").trim().toLowerCase();
+    const amount = args[2] === undefined ? null : Number(args[2]);
+
+    if (!number || !coin || (amount !== null && !Number.isFinite(amount))) {
+      await send(ctx, lines(`Usage: ${code("/payinvoice INV-202611-K7QD usdttrc20")}`, "Add an amount, from 20, to pay part of it."));
+      return;
+    }
+
+    const t = await api.payInvoice(number, coin, requestKey(ctx), amount ? Math.round(amount * 100) / 100 : null);
+    await sendPrivate(
+      ctx,
+      paymentText(t, `Payment for ${number}`),
+      `Payment of ${money(t.amount_usd)} opened. Payment details sent privately.`,
+      `Payment of ${money(t.amount_usd)} opened, but I could not message you the payment details.\n` +
+        `Open a chat with me and press <b>Start</b>, then run ${code(`/invoices ${number}`)} there.`
+    );
+
+    await log(`${esc(ctx.from.username ?? ctx.from.id)} opened a ${money(t.amount_usd)} payment for invoice ${esc(number)}`);
+  },
+};

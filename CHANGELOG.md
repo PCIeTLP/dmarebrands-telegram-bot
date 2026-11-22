@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.4.0
+
+Partners on monthly credit can see their credit and pay their invoices from Telegram.
+
+- `/balance` shows monthly credit when the account is on it: what you can still buy, the limit,
+  unused stock taken on credit, used keys not paid yet, the next invoice date and any invoice that
+  is due. Accounts that pay as they go see the same balance as before.
+- `/invoices` lists your invoices and `/invoices <number>` shows one with the keys used on it.
+  `/payinvoice <number> <coin> [amount]` opens a crypto payment for what is still due, the way
+  `/topup` does, and sends the details privately. `/invoices` needs `billing.read` and
+  `/payinvoice` needs `billing.topup`, so no group changes are needed.
+- `/buy` on credit asks to "Buy on credit", shows the credit left after, and reports the keys as
+  taken on credit. While an invoice is due it stops with the invoice number instead of buying.
+- `/refund` on a key taken on credit returns it: the key is destroyed and its credit frees up,
+  with no money moving.
+- `/ledger` names the two new kinds, Payment and Keys used.
+
+There are new commands, so upgrading is a pull, a restart and a re-register.
+
 ## v1.3.3
 
 Keys can now last hours or minutes as well as days, and the bot shows the real length.

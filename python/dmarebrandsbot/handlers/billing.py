@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -112,4 +114,118 @@ async def topups(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         context,
         truncate(lines(title("Recent top-ups"), "", *listed)),
         "Sent you your top-ups in a private message.",
+    )
+
+
+def invoice_state(inv: dict) -> str:
+    if inv.get("status") == "paid":
+        return "Paid"
+    if inv.get("stock_locked"):
+        return "Keys locked"
+    if inv.get("overdue"):
+        return "Due"
+    return "Unpaid"
+
+
+def day(value: object) -> str:
+    return esc(str(value)[:10]) if value else "?"
+
+
+def last_day(value: object) -> str:
+    try:
+        moment = datetime.fromisoformat(str(value).replace("Z", "+00:00")) - timedelta(seconds=1)
+    except ValueError:
+        return "?"
+    return moment.strftime("%Y-%m-%d")
+
+
+async def invoices(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    api = context.application.bot_data["api"]
+    number = ((context.args or [""])[0]).strip().upper()
+
+    if number:
+        inv = await api.get_invoice(number)
+        used = [line for line in inv.get("lines") or [] if line.get("kind") == "usage"]
+        listed = (
+            "\n".join(
+                f"{line.get('qty')} × {esc(line.get('duration') or '')} {esc(line.get('product') or '')} at "
+                f"{money(line.get('unit_usd'))} · {money(abs(float(line.get('amount_usd') or 0)))}"
+                for line in used
+            )
+            if used
+            else "No keys used in this period."
+        )
+        await send_private(
+            update,
+            context,
+            truncate(
+                lines(
+                    title(f"Invoice {inv.get('number')}"),
+                    "",
+                    pair("Amount", money(inv.get("amount_usd"))),
+                    pair("Paid", money(inv.get("paid_usd"))),
+                    pair("Still due", money(inv.get("due_usd"))),
+                    pair("Period", f"{day(inv.get('period_start'))} to {last_day(inv.get('period_end'))}"),
+                    pair("State", invoice_state(inv)),
+                    "",
+                    listed,
+                )
+            ),
+            "Sent you the invoice in a private message.",
+        )
+        return
+
+    result = await api.invoices(limit=12)
+    rows = result.get("data") or []
+    if not rows:
+        await send(update, "No invoices yet.")
+        return
+
+    listed_rows = [
+        f"{code(inv.get('number'))} - {day(inv.get('period_start'))} to {last_day(inv.get('period_end'))} · "
+        f"{money(inv.get('amount_usd'))} · {invoice_state(inv)}"
+        + (f" · {money(inv.get('due_usd'))} due" if inv.get("status") == "open" else "")
+        for inv in rows
+    ]
+    await send_private(
+        update,
+        context,
+        truncate(lines(title("Invoices"), "", *listed_rows)),
+        "Sent you your invoices in a private message.",
+    )
+
+
+async def payinvoice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    api = context.application.bot_data["api"]
+    args = list(context.args or [])
+    number = (args[0] if args else "").strip().upper()
+    coin = (args[1] if len(args) > 1 else "").strip().lower()
+    try:
+        amount = float(args[2]) if len(args) > 2 else None
+    except ValueError:
+        amount = -1.0
+
+    if not number or not coin or (amount is not None and amount <= 0):
+        await send(
+            update,
+            lines(
+                f"Usage: {code('/payinvoice INV-202611-K7QD usdttrc20')}",
+                "Add an amount, from 20, to pay part of it.",
+            ),
+        )
+        return
+
+    t = await api.pay_invoice(number, coin, key=request_key(update), amount_usd=round(amount, 2) if amount else None)
+    await send_private(
+        update,
+        context,
+        payment_text(t, f"Payment for {number}"),
+        f"Payment of {money(t.get('amount_usd'))} opened. Payment details sent privately.",
+        f"Payment of {money(t.get('amount_usd'))} opened, but I could not message you the payment details.\n"
+        f"Open a chat with me and press <b>Start</b>, then run {code('/invoices ' + number)} there.",
+    )
+
+    user = update.effective_user
+    await context.application.bot_data["log"](
+        f"{esc(user.username or user.id)} opened a {money(t.get('amount_usd'))} payment for invoice {esc(number)}"
     )

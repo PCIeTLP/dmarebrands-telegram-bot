@@ -13,7 +13,25 @@ KIND_LABEL = {
     "purchase": "Keys bought",
     "refund": "Refund",
     "adjust": "Adjustment",
+    "payment": "Payment",
+    "usage": "Keys used",
 }
+
+
+def due_line(invoice: dict | None) -> str:
+    if not invoice:
+        return ""
+    if invoice.get("stock_locked"):
+        state = "unused credit keys are locked"
+    elif invoice.get("overdue"):
+        state = "buying is paused"
+    else:
+        state = f"due {ago(invoice.get('due_at'))}"
+    number = str(invoice.get("number"))
+    return (
+        f"Invoice {code(number)}: {money(invoice.get('due_usd'))} still due, {state}. "
+        f"Pay it with {code('/payinvoice ' + number + ' usdttrc20')}."
+    )
 
 
 def product_lines(customer: dict) -> str:
@@ -191,6 +209,27 @@ async def resetuser(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     b = await context.application.bot_data["api"].balance()
     topup = b.get("topup") or {}
+    billing = b.get("billing") or {}
+
+    if billing.get("mode") == "credit":
+        ends = billing.get("period_ends_at")
+        await send(
+            update,
+            lines(
+                title("Monthly credit"),
+                "",
+                pair("Available", money(b.get("available_usd"))),
+                pair("Credit limit", money(billing.get("credit_limit_usd"))),
+                pair("Your discount", f"{b.get('discount_pct')}%"),
+                pair("Unused stock on credit", money(billing.get("stock_usd"))),
+                pair("Used, not paid yet", money(billing.get("used_unpaid_usd"))),
+                pair("Next invoice", esc(str(ends)[:10]) if ends else "not scheduled"),
+                "",
+                due_line(billing.get("open_invoice"))
+                or "Keys are charged when a customer redeems them, on the invoice issued on the 1st of each month.",
+            ),
+        )
+        return
 
     await send(
         update,
@@ -200,10 +239,13 @@ async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             pair("Available", money(b.get("balance_usd"))),
             pair("Your discount", f"{b.get('discount_pct')}%"),
             "",
-            f"Top up between {money(topup['min_usd'])} and {money(topup['max_usd'])} "
-            f"at {esc(topup['url'])}"
-            if topup
-            else "Top up from the partner panel.",
+            due_line(billing.get("open_invoice"))
+            or (
+                f"Top up between {money(topup['min_usd'])} and {money(topup['max_usd'])} "
+                f"at {esc(topup['url'])}"
+                if topup
+                else "Top up from the partner panel."
+            ),
         ),
     )
 

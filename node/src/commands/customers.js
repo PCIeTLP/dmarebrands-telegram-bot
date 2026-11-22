@@ -239,12 +239,46 @@ export const online = {
   },
 };
 
+function dueLine(invoice) {
+  if (!invoice) return "";
+  const state = invoice.stock_locked
+    ? "unused credit keys are locked"
+    : invoice.overdue
+      ? "buying is paused"
+      : `due ${ago(invoice.due_at)}`;
+  return `Invoice ${code(invoice.number)}: ${money(invoice.due_usd)} still due, ${state}. Pay it with ${code(
+    `/payinvoice ${invoice.number} usdttrc20`
+  )}.`;
+}
+
 export const balance = {
   name: "balance",
-  description: "Partner balance and how to top it up",
+  description: "Partner balance or credit and how to pay",
   scope: "billing.read",
   async run({ ctx, api }) {
     const b = await api.balance();
+    const billing = b.billing ?? null;
+
+    if (billing?.mode === "credit") {
+      await send(
+        ctx,
+        lines(
+          title("Monthly credit"),
+          "",
+          pair("Available", money(b.available_usd)),
+          pair("Credit limit", money(billing.credit_limit_usd)),
+          pair("Your discount", `${b.discount_pct}%`),
+          pair("Unused stock on credit", money(billing.stock_usd)),
+          pair("Used, not paid yet", money(billing.used_unpaid_usd)),
+          pair("Next invoice", billing.period_ends_at ? esc(String(billing.period_ends_at).slice(0, 10)) : "not scheduled"),
+          "",
+          dueLine(billing.open_invoice) ||
+            "Keys are charged when a customer redeems them, on the invoice issued on the 1st of each month."
+        )
+      );
+      return;
+    }
+
     await send(
       ctx,
       lines(
@@ -253,9 +287,10 @@ export const balance = {
         pair("Available", money(b.balance_usd)),
         pair("Your discount", `${b.discount_pct}%`),
         "",
-        b.topup
-          ? `Top up between ${money(b.topup.min_usd)} and ${money(b.topup.max_usd)} at ${esc(b.topup.url)}`
-          : "Top up from the partner panel."
+        dueLine(billing?.open_invoice) ||
+          (b.topup
+            ? `Top up between ${money(b.topup.min_usd)} and ${money(b.topup.max_usd)} at ${esc(b.topup.url)}`
+            : "Top up from the partner panel.")
       )
     );
   },
@@ -266,6 +301,8 @@ const KIND_LABEL = {
   purchase: "Keys bought",
   refund: "Refund",
   adjust: "Adjustment",
+  payment: "Payment",
+  usage: "Keys used",
 };
 
 export const ledger = {

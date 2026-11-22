@@ -101,14 +101,29 @@ async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     total = round(float(chosen["your_price_usd"]) * count, 2)
     balance = await api.balance()
     available = float(balance.get("balance_usd") or 0)
+    billing = balance.get("billing") or {}
+    on_credit = billing.get("mode") == "credit"
+    due = billing.get("open_invoice")
+
+    if billing.get("buying_paused") and due:
+        number = str(due.get("number"))
+        await send(
+            update,
+            lines(
+                title("Buying is paused"),
+                f"Invoice {code(number)} has {money(due.get('due_usd'))} still due. "
+                f"Pay it with {code('/payinvoice ' + number + ' usdttrc20')} to buy keys again.",
+            ),
+        )
+        return
 
     if available < total:
         await send(
             update,
             lines(
-                title("Not enough balance"),
+                title("Not enough credit" if on_credit else "Not enough balance"),
                 f"{count} × {esc(chosen['label'])} costs {money(total)} but the account "
-                f"only has {money(available)}.",
+                f"only has {money(available)}{' of credit left' if on_credit else ''}.",
             ),
         )
         return
@@ -120,10 +135,11 @@ async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             title("Confirm this purchase"),
             "",
             f"{count} × {esc(chosen['label'])} ({chosen['days']} days)",
-            f"{money(chosen['your_price_usd'])} each · {money(total)} total",
-            f"Balance after: {money(available - total)}",
+            f"{money(chosen['your_price_usd'])} each · {money(total)} total"
+            f"{', charged when each key is redeemed' if on_credit else ''}",
+            f"{'Credit left after' if on_credit else 'Balance after'}: {money(available - total)}",
         ),
-        confirm_label=f"Buy for {money(total)}",
+        confirm_label=f"Buy on credit, {money(total)}" if on_credit else f"Buy for {money(total)}",
     )
 
     if not agreed:
@@ -132,18 +148,23 @@ async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     bought = await api.buy_keys(plan_id, count, request_key(update))
     codes = [k["code"] for k in bought.get("data") or []]
     plural = "" if len(codes) == 1 else "s"
-    summary = f"Bought {len(codes)} key{plural} for {money(bought.get('spent_usd'))}"
+    took = bool(bought.get("on_credit"))
+    summary = (
+        f"Took {len(codes)} key{plural} on credit ({money(total)})"
+        if took
+        else f"Bought {len(codes)} key{plural} for {money(bought.get('spent_usd'))}"
+    )
 
     await send_private(
         update,
         context,
         lines(
-            title(f"Bought {len(codes)} key{plural}"),
+            title(f"{'Took' if took else 'Bought'} {len(codes)} key{plural}"),
             "",
             "\n".join(code(c) for c in codes),
             "",
-            pair("Spent", money(bought.get("spent_usd"))),
-            pair("Balance", money(bought.get("balance_usd"))),
+            pair("On credit", money(total)) if took else pair("Spent", money(bought.get("spent_usd"))),
+            pair("Credit left" if took else "Balance", money(bought.get("balance_usd"))),
         ),
         f"{summary}. Codes sent privately.",
         fail_note=(
@@ -154,7 +175,9 @@ async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     who = update.effective_user.username or update.effective_user.id
     await context.application.bot_data["log"](
-        f"{esc(who)} bought {len(codes)} × {esc(chosen['label'])} for {money(bought.get('spent_usd'))}"
+        f"{esc(who)} took {len(codes)} × {esc(chosen['label'])} on credit ({money(total)})"
+        if took
+        else f"{esc(who)} bought {len(codes)} × {esc(chosen['label'])} for {money(bought.get('spent_usd'))}"
     )
 
 
@@ -177,17 +200,20 @@ async def refund(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
 
+    credit = bool(found.get("credit"))
     agreed = await confirm(
         update,
         context,
         lines(
-            title("Confirm this refund"),
+            title("Confirm this return" if credit else "Confirm this refund"),
             "",
             f"{code(found['code'])} - {key_length(found)} {esc(found['product'])}",
-            f"This destroys the key and puts {money(found.get('cost_usd'))} back on the balance.",
+            f"This destroys the key and frees {money(found.get('cost_usd'))} of credit. It was never charged, so no money moves."
+            if credit
+            else f"This destroys the key and puts {money(found.get('cost_usd'))} back on the balance.",
             "It cannot be undone and the code stops working immediately.",
         ),
-        confirm_label=f"Refund {money(found.get('cost_usd'))}",
+        confirm_label="Return key" if credit else f"Refund {money(found.get('cost_usd'))}",
         sensitive=True,
     )
 
@@ -195,6 +221,11 @@ async def refund(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     result = await api.refund_key(wanted, key=request_key(update))
+    if result.get("returned"):
+        await send(update, lines(title("Returned"), f"{code(result['code'])} is gone and its credit is free again."))
+        who = update.effective_user.username or update.effective_user.id
+        await context.application.bot_data["log"](f"{esc(who)} returned {code(result['code'])} to credit")
+        return
     refunded = f"Refunded 1 key for {money(result.get('refunded_usd'))}"
     await send_private(
         update,
